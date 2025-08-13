@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { TextInput } from 'react-native-paper';
-import DatePicker from 'react-native-date-picker';
 import { Control, Controller } from 'react-hook-form';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 interface DateFieldProps {
   field: {
@@ -13,7 +13,7 @@ interface DateFieldProps {
 }
 
 const DateField: React.FC<DateFieldProps> = ({ field, control }) => {
-  const [open, setOpen] = useState(false);
+  const [isDatePickerVisible, setDatePickerVisibility] = useState(false);
 
   // Early return if field is null or undefined
   if (!field) {
@@ -47,7 +47,7 @@ const DateField: React.FC<DateFieldProps> = ({ field, control }) => {
           const displayDate = parseToDate(value);
           return (
             <>
-              <TouchableOpacity onPress={() => setOpen(true)}>
+              <TouchableOpacity onPress={() => setDatePickerVisibility(true)}>
                 <TextInput
                   label={field.label}
                   value={displayDate.toLocaleDateString()}
@@ -55,20 +55,16 @@ const DateField: React.FC<DateFieldProps> = ({ field, control }) => {
                   mode="outlined"
                 />
               </TouchableOpacity>
-
-              {open && (
-                <DatePicker
-                  modal
-                  open={open}
-                  date={displayDate}
-                  mode="date"
-                  onConfirm={(date: Date) => {
-                    setOpen(false);
-                    onChange(date.toISOString()); // store as ISO string
-                  }}
-                  onCancel={() => setOpen(false)}
-                />
-              )}
+              <DateTimePickerModal
+                isVisible={isDatePickerVisible}
+                mode="date"
+                onConfirm={(date: Date) => {
+                  setDatePickerVisibility(false);
+                  onChange(date.toISOString());
+                }}
+                onCancel={() => setDatePickerVisibility(false)}
+                date={displayDate}
+              />
             </>
           );
         }}

@@ -6,7 +6,7 @@ import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { MainStackParamList } from '../../navigation/MainNavigator';
-import { getDocument, updateDocument, createDocument, getDocTypeMetadata } from '../../api/documents';
+import { getDocument, updateDocument, createDocument, getDocTypeMetadata, createSalesOrderFromQuotation } from '../../api/documents';
 import { ERPDocument, ERPField } from '../../types';
 import LinkField from './LinkField';
 import RatingField from './RatingField';
@@ -14,7 +14,6 @@ import TableField from './TableField';
 import SelectField from './SelectField';
 import DateField from './DateField';
 import DynamicLinkField from './DynamicLinkField';
-import DateTimeField from './DateTimeField';
 import TimeField from './TimeField';
 import DurationField from './DurationField';
 import ColorField from './ColorField';
@@ -38,6 +37,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isCreatingSalesOrder, setIsCreatingSalesOrder] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
   const layout = useWindowDimensions();
@@ -96,7 +96,16 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       const result = await getDocTypeMetadata(docType);
       if (result.data) {
-        setFields(result.data.fields);
+        const parentFields = result.data.fields;
+        const childFetchPromises = parentFields
+          .filter((f: ERPField) => f.fieldtype === 'Table' && f.options)
+          .map((f: ERPField) => getDocTypeMetadata(f.options!));
+        
+        const childMetaResults = await Promise.all(childFetchPromises);
+        const childFields = childMetaResults.flatMap(res => res.data ? res.data.fields : []);
+
+        console.log('All fields:', [...parentFields, ...childFields]);
+        setFields([...parentFields, ...childFields]);
         setFieldOrder(result.data.field_order);
       } else {
         setError(result.error || 'Failed to fetch metadata');
@@ -133,9 +142,19 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
         }
 
         if (metaResult.data) {
-          const sortedFields = metaResult.data.field_order.map((fieldname: string) => 
-            metaResult.data.fields.find((f: ERPField) => f.fieldname === fieldname)
-          ).filter(Boolean);
+          const parentFields = metaResult.data.fields;
+          const childFetchPromises = parentFields
+            .filter((f: ERPField) => f.fieldtype === 'Table' && f.options)
+            .map((f: ERPField) => getDocTypeMetadata(f.options!));
+
+          const childMetaResults = await Promise.all(childFetchPromises);
+          const childFields = childMetaResults.flatMap(res => res.data ? res.data.fields : []);
+          
+          const allFields = [...parentFields, ...childFields];
+          console.log('All fields:', allFields);
+          const sortedFields = metaResult.data.field_order
+            .map((fieldname: string) => allFields.find((f: ERPField) => f.fieldname === fieldname))
+            .filter(Boolean);
 
           setFields(sortedFields);
           setFieldOrder(metaResult.data.field_order);
@@ -195,6 +214,30 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
       setError('An error occurred while saving the document');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCreateSalesOrder = async () => {
+    if (docName) {
+      setIsCreatingSalesOrder(true);
+      setError(null);
+      try {
+        const result = await createSalesOrderFromQuotation(docName);
+        if (result.data) {
+          navigation.replace('DocumentForm', {
+            docType: 'Sales Order',
+            docName: result.data.name,
+            mode: 'edit',
+            title: result.data.name,
+          });
+        } else {
+          setError(result.error || 'Failed to create Sales Order');
+        }
+      } catch (err) {
+        setError('An error occurred while creating the Sales Order');
+      } finally {
+        setIsCreatingSalesOrder(false);
+      }
     }
   };
 
@@ -399,12 +442,6 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
             <BarcodeField field={field} control={control} />
           </View>
         );
-      case 'datetime':
-        return (
-          <View key={field.fieldname} style={styles.fieldContainer}>
-            <DateTimeField field={field} control={control} />
-          </View>
-        );
       case 'time':
         return (
           <View key={field.fieldname} style={styles.fieldContainer}>
@@ -470,6 +507,9 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
       <FlatList
         style={styles.contentContainer}
         data={fieldsInTab.filter((field) => {
+          if (field.parent !== docType) {
+            return false;
+          }
           if (field.hidden || field.read_only || field.fieldtype === 'Section Break') {
             return false;
           }
@@ -496,7 +536,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
           return true;
         })}
         renderItem={({ item }) => renderField(item)}
-        keyExtractor={(item) => item.fieldname}
+        keyExtractor={(item) => `${item.parent}-${item.fieldname}`}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       />
     );
@@ -529,6 +569,9 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
       <FlatList
         style={styles.contentContainer}
         data={fields.filter((field) => {
+          if (field.parent !== docType) {
+            return false;
+          }
           if (field.hidden || field.read_only || field.fieldtype === 'Section Break') {
             return false;
           }
@@ -555,7 +598,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
           return true;
         })}
         renderItem={({ item }) => renderField(item)}
-        keyExtractor={(item) => item.fieldname}
+        keyExtractor={(item) => `${item.parent}-${item.fieldname}`}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       />
     );
@@ -575,6 +618,17 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
           >
             {mode === 'edit' ? 'Save Changes' : 'Create Document'}
           </Button>
+          {docType === 'Quotation' && mode === 'edit' && (
+            <Button
+              mode="outlined"
+              onPress={handleCreateSalesOrder}
+              loading={isCreatingSalesOrder}
+              disabled={isCreatingSalesOrder || saving}
+              style={{ marginLeft: 8 }}
+            >
+              Create Sales Order
+            </Button>
+          )}
         </Card.Actions>
       </View>
     </FormProvider>

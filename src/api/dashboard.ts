@@ -99,9 +99,31 @@ const getMonthlySalesData = async (): Promise<{ target: number; achieved: number
   }
 };
 
+const getItemWiseSales = async (): Promise<{ labels: string[]; values: number[] }> => {
+  try {
+    const response = await apiClient.get<any>('/api/resource/Sales Invoice Item', {
+      params: {
+        fields: '["item_name", "SUM(amount) as total_amount"]',
+        filters: '[["docstatus","=",1]]',
+        group_by: 'item_name',
+        order_by: 'total_amount desc',
+        limit: 10,
+      },
+    });
+
+    const labels = response.data?.data.map((item: any) => item.item_name);
+    const values = response.data?.data.map((item: any) => item.total_amount);
+
+    return { labels, values };
+  } catch (error) {
+    console.error('Error fetching item wise sales data:', error);
+    return { labels: [], values: [] };
+  }
+};
+
 export const getDashboardData = async (): Promise<ERPNextResponse<DashboardData>> => {
   try {
-    const [salesOrders, purchaseOrders, invoices, items, monthlySalesCount, monthlyQuotationCount, monthlySalesData, expenseClaims, leaveApplications] = await Promise.all([
+    const [salesOrders, purchaseOrders, invoices, items, monthlySalesCount, monthlyQuotationCount, monthlySalesData, expenseClaims, leaveApplications, itemWiseSales] = await Promise.all([
       getDocTypeCount('Sales Order'),
       getDocTypeCount('Purchase Order'),
       getDocTypeCount('Sales Invoice'),
@@ -123,6 +145,7 @@ export const getDashboardData = async (): Promise<ERPNextResponse<DashboardData>
           order_by: 'creation desc',
         },
       }),
+      getItemWiseSales(),
     ]);
 
     const dashboardData: DashboardData = {
@@ -137,6 +160,11 @@ export const getDashboardData = async (): Promise<ERPNextResponse<DashboardData>
           title: 'Monthly Sales Target',
           type: 'chart',
           data: monthlySalesData,
+        },
+        {
+          title: 'Item-wise Sales',
+          type: 'chart',
+          data: itemWiseSales,
         },
         {
           title: 'Recent Expense Claims',

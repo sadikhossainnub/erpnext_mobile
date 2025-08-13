@@ -78,6 +78,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 16,
+    marginTop: 30,
   },
   headerTitle: {
     fontSize: 24,

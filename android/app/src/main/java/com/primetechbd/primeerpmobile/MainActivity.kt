@@ -1,4 +1,4 @@
-package com.yourcompany.erpnextmobile
+package com.primetechbd.primeerpmobile
 
 import android.os.Build
 import android.os.Bundle

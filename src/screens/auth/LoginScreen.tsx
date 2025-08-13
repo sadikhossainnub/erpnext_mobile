@@ -9,44 +9,11 @@ const LoginScreen = () => {
   const { login, isLoading, error } = useAuth();
   const theme = useTheme();
 
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      justifyContent: 'center',
-      padding: 20,
-      backgroundColor: theme.colors.background,
-    },
-    title: {
-      fontSize: 28,
-      marginBottom: 24,
-      textAlign: 'center',
-      color: theme.colors.onSurface,
-    },
-    input: {
-      marginBottom: 16,
-    },
-    button: {
-      marginTop: 8,
-      paddingVertical: 8,
-    },
-    error: {
-      color: theme.colors.error,
-      textAlign: 'center',
-      marginBottom: 16,
-    },
-    logo: {
-      width: 150,
-      height: 150,
-      alignSelf: 'center',
-      marginBottom: 24,
-    },
-  });
-
   return (
     <View style={styles.container}>
       <Image source={require('../../../assets/logo.jpg')} style={styles.logo} />
       <Text style={styles.title}>PRIME ERP</Text>
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && <Text style={[styles.error, { color: theme.colors.error }]}>{error}</Text>}
       <TextInput
         label="Email"
         value={email}
@@ -76,5 +43,36 @@ const LoginScreen = () => {
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 20,
+    backgroundColor: '#F5F5F5',
+  },
+  title: {
+    fontSize: 28,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  input: {
+    marginBottom: 16,
+  },
+  button: {
+    marginTop: 8,
+    paddingVertical: 8,
+  },
+  error: {
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  logo: {
+    width: 150,
+    height: 150,
+    alignSelf: 'center',
+    marginBottom: 24,
+  },
+});
 
 export default LoginScreen;

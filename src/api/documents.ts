@@ -161,3 +161,27 @@ export const getUserProfile = async (
     return { error: 'Error fetching user profile' };
   }
 };
+
+export const createSalesOrderFromQuotation = async (
+  quotationName: string
+): Promise<ERPNextResponse<ERPDocument>> => {
+  try {
+    const response = await apiClient.post<DocResponse>(
+      '/api/method/erpnext.selling.doctype.quotation.quotation.make_sales_order',
+      {
+        source_name: quotationName,
+        for_doctype: 'Sales Order',
+      }
+    );
+
+    if (response.data && response.data.message) {
+      const newSalesOrder = JSON.parse(response.data.message);
+      return { data: newSalesOrder };
+    } else {
+      return { error: 'Failed to create Sales Order' };
+    }
+  } catch (error) {
+    console.error('Error creating Sales Order:', error);
+    return { error: 'Error creating Sales Order' };
+  }
+};

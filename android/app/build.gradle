@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.yourcompany.erpnextmobile'
+    namespace 'com.primetechbd.primeerpmobile'
     defaultConfig {
-        applicationId 'com.yourcompany.erpnextmobile'
+        applicationId 'com.primetechbd.primeerpmobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -146,6 +146,8 @@ android {
         }
     }
 }
+
+apply from: new File(["node", "--print", "require.resolve('react-native-vector-icons/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile().getAbsolutePath() + "/android/build.gradle"
 
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
