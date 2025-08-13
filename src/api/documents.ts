@@ -146,3 +146,18 @@ export const searchDocuments = async (
 ): Promise<ERPNextResponse<ERPDocument[]>> => {
   return getDocList(docType, query.filters, undefined, 100);
 };
+
+export const getUserProfile = async (
+  email: string
+): Promise<ERPNextResponse<any>> => {
+  try {
+    const response = await apiClient.get<DocResponse>(`/api/resource/User/${email}`);
+    if (response.data) {
+      return { data: response.data.data };
+    } else {
+      return { error: 'Failed to fetch user profile' };
+    }
+  } catch (error) {
+    return { error: 'Error fetching user profile' };
+  }
+};

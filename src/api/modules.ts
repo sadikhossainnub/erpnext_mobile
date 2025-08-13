@@ -6,7 +6,7 @@ export const getAvailableModules = (): ERPNextResponse<Module[]> => {
     {
       name: 'Sales',
       icon: 'shopping-cart',
-      docTypes: ['Customer', 'Quotation', 'Sales Order', 'Sales Invoice', 'Delivery Note'],
+      docTypes: ['Customer', 'Quotation', 'Sales Order'],
     },
     {
       name: 'Stock',

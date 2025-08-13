@@ -4,8 +4,9 @@ import { Text, Card, ActivityIndicator, useTheme, Searchbar, IconButton, Divider
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { MainStackParamList } from '../../navigation/MainNavigator';
-import { getDocList } from '../../api/documents';
-import { ERPDocument } from '../../types';
+import { getDocList, getDocTypeMetadata, getUserProfile } from '../../api/documents';
+import { ERPDocument, ERPField } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Props = {
   navigation: NativeStackNavigationProp<MainStackParamList, 'DocTypeList'>;
@@ -16,22 +17,51 @@ export const DocTypeListScreen: React.FC<Props> = ({ navigation, route }) => {
   const { moduleName, docTypes } = route.params;
   const [selectedDocType, setSelectedDocType] = useState<string | null>(docTypes[0] || null);
   const [documents, setDocuments] = useState<ERPDocument[]>([]);
+  const [fields, setFields] = useState<ERPField[]>([]);
+  const [owners, setOwners] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const theme = useTheme();
+  const { user } = useAuth();
 
   const fetchDocuments = async (docType: string) => {
     setLoading(true);
     setError(null);
 
     try {
-      const result = await getDocList(docType);
-      if (result.data) {
-        setDocuments(result.data);
+      const filters: Record<string, any> = {};
+      const filteredDocTypes = ["Attendance", "Salary Slip", "Leave Application", "Employee Advance", "Quotation", "Sales Order"];
+      if (user && filteredDocTypes.includes(docType)) {
+        filters.owner = user.id;
+      }
+
+      const [docsResult, metaResult] = await Promise.all([
+        getDocList(docType, filters),
+        getDocTypeMetadata(docType),
+      ]);
+
+      if (docsResult.data) {
+        setDocuments(docsResult.data);
+        const ownerIds = [...new Set(docsResult.data.map((d) => d.owner))];
+        const ownerPromises = ownerIds.map((id) => getUserProfile(id));
+        const ownerResults = await Promise.all(ownerPromises);
+        const ownerMap: Record<string, string> = {};
+        ownerResults.forEach((res, index) => {
+          if (res.data) {
+            ownerMap[ownerIds[index]] = res.data.full_name;
+          }
+        });
+        setOwners(ownerMap);
       } else {
-        setError(result.error || 'Failed to fetch documents');
+        setError(docsResult.error || 'Failed to fetch documents');
         setDocuments([]);
+      }
+
+      if (metaResult.data) {
+        setFields(metaResult.data.fields);
+      } else {
+        setError((prev) => (prev ? `${prev}, ${metaResult.error || ''}` : metaResult.error || null));
       }
     } catch (err) {
       setError('An error occurred while fetching documents');
@@ -88,33 +118,40 @@ export const DocTypeListScreen: React.FC<Props> = ({ navigation, route }) => {
     </TouchableOpacity>
   );
 
-  const renderDocumentItem = ({ item }: { item: ERPDocument }) => (
-    <TouchableOpacity onPress={() => handleDocumentPress(item)}>
-      <Card style={styles.documentCard}>
-        <Card.Content>
-          <Text style={styles.documentName}>{item.name}</Text>
-          {Object.entries(item).map(([key, value]) => {
-            if (key !== 'name' && key !== 'modified' && key !== 'owner' && value) {
-              return (
-                <Text key={key} style={styles.documentInfo}>
-                  {key}: {value}
-                </Text>
-              );
-            }
-            return null;
-          })}
-          {item.modified && (
-            <Text style={styles.documentInfo}>
-              Modified: {new Date(item.modified).toLocaleString()}
-            </Text>
-          )}
-          {item.owner && (
-            <Text style={styles.documentInfo}>Owner: {item.owner}</Text>
-          )}
-        </Card.Content>
-      </Card>
-    </TouchableOpacity>
-  );
+  const renderDocumentItem = ({ item }: { item: ERPDocument }) => {
+    const getFieldLabel = (fieldName: string) => {
+      const field = fields.find((f) => f.fieldname === fieldName);
+      return field ? field.label : fieldName;
+    };
+
+    return (
+      <TouchableOpacity onPress={() => handleDocumentPress(item)}>
+        <Card style={styles.documentCard}>
+          <Card.Content>
+            <Text style={styles.documentName}>{item.name}</Text>
+            {item.owner && owners[item.owner] && (
+              <Text style={styles.ownerText}>Owner: {owners[item.owner]}</Text>
+            )}
+            {Object.entries(item).map(([key, value]) => {
+              if (key !== 'name' && key !== 'modified' && key !== 'owner' && value) {
+                return (
+                  <Text key={key} style={styles.documentInfo}>
+                    {getFieldLabel(key)}: {value}
+                  </Text>
+                );
+              }
+              return null;
+            })}
+            {item.modified && (
+              <Text style={styles.documentInfo}>
+                Modified: {new Date(item.modified).toLocaleString()}
+              </Text>
+            )}
+          </Card.Content>
+        </Card>
+      </TouchableOpacity>
+    );
+  };
 
   const filteredDocuments = documents.filter((doc) =>
     doc.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -247,6 +284,11 @@ const styles = StyleSheet.create({
   documentName: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  ownerText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 4,
   },
   documentInfo: {
     fontSize: 12,
