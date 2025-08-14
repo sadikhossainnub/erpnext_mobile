@@ -20,6 +20,15 @@ export interface ERPField {
   in_global_search?: number;
   print_hide?: number;
   in_preview?: number;
+  track_changes?: number;
+  is_submittable?: number;
+  is_child_table?: number;
+  is_single?: number;
+  is_tree?: number;
+  is_calendar_and_gantt?: number;
+  quick_entry?: number;
+  track_seen?: number;
+  track_views?: number;
   unique?: number;
   no_copy?: number;
   set_only_once?: number;
