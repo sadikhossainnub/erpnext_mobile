@@ -189,6 +189,9 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchDocument();
+    if (mode === 'create' && docType === 'Quotation') {
+      setValue('quotation_to', 'Customer');
+    }
   }, [docType, docName, mode]);
 
   const handleRefresh = () => {
@@ -308,14 +311,29 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
       case 'link':
         if (field.options) {
+          let linkOptions = field.options;
+          let linkFilters: Record<string, any> | undefined = undefined;
+
+          // Special handling for 'party' field when 'quotation_to' is 'Customer'
+          if (field.fieldname === 'party' && formData.quotation_to === 'Customer') {
+            linkOptions = 'Customer'; // Set the linked DocType to Customer
+            // No specific filters needed here, as the docType itself filters to Customers
+          } else if (field.fieldname === 'party' && formData.quotation_to === 'Lead') {
+            linkOptions = 'Lead';
+          } else if (field.fieldname === 'party' && formData.quotation_to === 'Supplier') {
+            linkOptions = 'Supplier';
+          }
+          // Add more conditions here if other fields need dynamic filtering
+
           return (
             <View key={field.fieldname} style={styles.fieldContainer}>
               <LinkField
                 label={getLabel(field.label, field.reqd)}
                 value={formData[field.fieldname] ? String(formData[field.fieldname]) : ''}
                 onValueChange={(text) => handleInputChange(field.fieldname, text)}
-                options={field.options} // Pass field.options as the options prop
+                options={linkOptions} // Use dynamic linkOptions
                 docType={docType} // Pass the parent docType
+                filters={linkFilters} // Pass dynamic filters
               />
             </View>
           );

@@ -35,43 +35,30 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
       color: theme.colors.onSurface,
     },
     tableContainer: {
+      flex: 1, // Allow table container to expand vertically
       borderWidth: 1,
       borderColor: theme.colors.outline,
       borderRadius: 4,
-      minHeight: 100, // Changed to minHeight for better flexibility
+      minHeight: 100, // Ensure a minimum height
     },
     headerRow: {
-      flexDirection: 'row',
-      backgroundColor: theme.colors.surfaceVariant,
-      alignItems: 'center',
-      paddingVertical: 8, // Added vertical padding
-      flexWrap: 'wrap', // Allow header cells to wrap
+      // Removed as headers will be part of each vertically stacked field
     },
     headerCell: {
-      flexGrow: 1,
-      flexShrink: 1,
-      flexBasis: 0, // Allow content to determine initial size
-      paddingHorizontal: 4, // Adjusted padding
-      color: theme.colors.onSurfaceVariant,
-      fontWeight: 'bold',
-      textAlign: 'center', // Center align header text
-      minWidth: 100, // Increased minimum width for better readability
+      // Removed as headers will be part of each vertically stacked field
     },
     row: {
-      flexDirection: 'row',
+      flexDirection: 'column', // Stack fields vertically within each row
       borderBottomWidth: 1,
       borderColor: theme.colors.outline,
-      alignItems: 'center',
       backgroundColor: theme.colors.surface,
-      paddingVertical: 4, // Added vertical padding
+      paddingVertical: 8, // Adjusted vertical padding for the whole row
+      paddingHorizontal: 8,
+      marginBottom: 8, // Add some space between rows
     },
     cell: {
-      flexGrow: 1,
-      flexShrink: 1,
-      flexBasis: 0, // Allow content to determine initial size
-      paddingHorizontal: 4, // Adjusted padding
-      textAlign: 'center', // Center align cell text
-      minWidth: 100, // Increased minimum width for better readability
+      flex: 1, // Cell will now contain the input/component
+      paddingHorizontal: 4,
     },
     buttonContainer: {
       flexDirection: 'row',
@@ -128,28 +115,42 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
       borderRadius: 4,
     },
     inputCell: {
+      flex: 1, // Ensure input takes available space
       padding: 4,
       height: 40,
-      textAlign: 'center', // Center align input text
+      textAlign: 'left', // Align text to left for better readability in vertical layout
       paddingHorizontal: 8,
     },
     actionsCell: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'center',
-      width: 80,
+      justifyContent: 'flex-end', // Align actions to the right
+      width: 80, // Keep fixed width for actions
     },
-    // Added styles for better visual separation and alignment
+    rowNumberAndCheckboxContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8, // Space below the row number/checkbox
+    },
     rowNumberCell: {
-      flex: 0.5,
-      paddingHorizontal: 8,
+      width: 50, // Fixed width for "No." column
       textAlign: 'center',
+      fontWeight: 'bold',
+      color: theme.colors.onSurface,
+    },
+    fieldRow: {
+      flexDirection: 'row', // Label and input side-by-side
+      alignItems: 'center',
+      marginBottom: 8, // Space between fields
+    },
+    fieldLabel: {
+      width: 100, // Fixed width for labels
+      fontWeight: 'bold',
+      color: theme.colors.onSurfaceVariant,
+      marginRight: 8,
     },
     linkFieldCell: {
-      flexGrow: 2, // Allow LinkField to grow more
-      flexShrink: 1,
-      flexBasis: 0, // Allow content to determine initial size
-      minWidth: 150, // Increased minimum width for LinkField
+      flex: 1, // LinkField will take remaining space
     },
   });
 
@@ -268,21 +269,26 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
 
   const renderRow = ({ item, index }: { item: any, index: number }) => (
     <View style={styles.row} key={index}>
-      <View style={styles.checkboxCell}>
-        <Checkbox
-          status={selectedRows.includes(index) ? 'checked' : 'unchecked'}
-          onPress={() => handleSelectRow(index)}
-        />
+      <View style={styles.rowNumberAndCheckboxContainer}>
+        <View style={styles.checkboxCell}>
+          <Checkbox
+            status={selectedRows.includes(index) ? 'checked' : 'unchecked'}
+            onPress={() => handleSelectRow(index)}
+          />
+        </View>
+        <Text style={styles.rowNumberCell}>{index + 1}</Text>
+        {/* Removed actionsCell as it was empty and causing text rendering issues */}
       </View>
-      <Text style={styles.rowNumberCell}>{index + 1}</Text>
       {fields
         .filter((field) => field.in_list_view === 1)
         .map((field: ERPField) => (
-          <View style={styles.cell} key={field.fieldname}>
-            {renderCell(item, index, field)}
+          <View style={styles.fieldRow} key={field.fieldname}>
+            <Text style={styles.fieldLabel}>{field.label}:</Text>
+            <View style={styles.cell}>
+              {renderCell(item, index, field)}
+            </View>
           </View>
         ))}
-      <View style={styles.actionsCell} />
     </View>
   );
 
@@ -290,28 +296,14 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <View style={styles.tableContainer}>
-        <View style={styles.headerRow}>
-          <View style={styles.checkboxCell}>
-            <Checkbox
-              status={selectedRows.length === data.length && data.length > 0 ? 'checked' : 'unchecked'}
-              onPress={handleSelectAllRows}
-            />
-          </View>
-          <Text style={[styles.headerCell, { flex: 0.5 }]}>No.</Text>
-          {fields
-            .filter((field) => field.in_list_view === 1)
-            .map((field: ERPField) => (
-              <Text key={field.fieldname} style={[styles.headerCell, field.fieldtype === 'Link' ? styles.linkFieldCell : {}]}>
-                {field.label}
-              </Text>
-            ))}
-          <View style={styles.actionsCell} />
+        {/* Removed headerRow as fields are now stacked vertically within each row */}
+        <View style={{ flex: 1 }}>
+          <FlatList
+            data={data}
+            renderItem={renderRow}
+            keyExtractor={(item, index) => index.toString()}
+          />
         </View>
-        <FlatList
-          data={data}
-          renderItem={renderRow}
-          keyExtractor={(item, index) => index.toString()}
-        />
       </View>
       <View style={styles.buttonContainer}>
         <View style={styles.leftButtons}>

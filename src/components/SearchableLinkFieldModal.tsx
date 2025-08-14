@@ -10,6 +10,7 @@ interface SearchableLinkFieldModalProps {
   onSelect: (value: string) => void;
   docType: string;
   currentValue: string;
+  filters?: Record<string, any>; // New prop for dynamic filters
 }
 
 const SearchableLinkFieldModal: React.FC<SearchableLinkFieldModalProps> = ({
@@ -18,6 +19,7 @@ const SearchableLinkFieldModal: React.FC<SearchableLinkFieldModalProps> = ({
   onSelect,
   docType,
   currentValue,
+  filters, // Add filters to destructuring
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [documents, setDocuments] = useState<ERPDocument[]>([]);
@@ -84,13 +86,13 @@ const SearchableLinkFieldModal: React.FC<SearchableLinkFieldModalProps> = ({
       setSearchQuery(''); // Reset search query when modal opens
       fetchDocuments(''); // Fetch all documents initially
     }
-  }, [visible, docType]);
+  }, [visible, docType, filters]); // Add filters to dependency array
 
   const fetchDocuments = async (query: string) => {
     setLoading(true);
     try {
-      const filters = query ? { name: ['like', `%${query}%`] } : {};
-      const result = await searchDocuments(docType, { filters });
+      const combinedFilters = { ...(filters || {}), ...(query ? { name: ['like', `%${query}%`] } : {}) };
+      const result = await searchDocuments(docType, { filters: combinedFilters });
       if (result.data) {
         setDocuments(result.data);
       } else {

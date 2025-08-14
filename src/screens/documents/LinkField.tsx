@@ -11,9 +11,10 @@ interface LinkFieldProps {
   onValueChange: (value: string) => void;
   options: string; // This will be the docType for the linked document
   docType: string; // This is the docType of the parent document
+  filters?: Record<string, any>; // New prop for dynamic filters
 }
 
-const LinkField: React.FC<LinkFieldProps> = ({ label, value, onValueChange, options, docType }) => {
+const LinkField: React.FC<LinkFieldProps> = ({ label, value, onValueChange, options, docType, filters }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const theme = useTheme();
 
@@ -22,8 +23,9 @@ const LinkField: React.FC<LinkFieldProps> = ({ label, value, onValueChange, opti
       // Removed marginBottom to prevent extra spacing in table cells
     },
     label: {
-      // Label is rendered by TableField, so no need for it here
-      display: 'none', // Hide the label
+      fontSize: 16,
+      marginBottom: 8,
+      color: theme.colors.onSurface,
     },
     inputContainer: {
       backgroundColor: theme.colors.surface,
@@ -66,6 +68,7 @@ const LinkField: React.FC<LinkFieldProps> = ({ label, value, onValueChange, opti
         onSelect={handleSelect}
         docType={options} // 'options' prop from LinkField is the docType for the linked document
         currentValue={value}
+        filters={filters} // Pass the new filters prop
       />
     </View>
   );
