@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import { Text, useTheme, IconButton, Checkbox } from 'react-native-paper';
 import { ERPField } from '../../types';
+import LinkField from './LinkField';
 
 interface TableFieldProps {
   label: string;
@@ -20,6 +21,10 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
     setData(value);
   }, [value]);
 
+  useEffect(() => {
+    setSelectedRows([]);
+  }, [data]);
+
   const styles = StyleSheet.create({
     container: {
       marginBottom: 16,
@@ -33,17 +38,20 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
       borderWidth: 1,
       borderColor: theme.colors.outline,
       borderRadius: 4,
+      minHeight: 100, // Changed to minHeight for better flexibility
     },
     headerRow: {
       flexDirection: 'row',
       backgroundColor: theme.colors.surfaceVariant,
       alignItems: 'center',
+      paddingVertical: 8, // Added vertical padding
     },
     headerCell: {
       flex: 1,
-      padding: 8,
+      paddingHorizontal: 8, // Adjusted padding
       color: theme.colors.onSurfaceVariant,
       fontWeight: 'bold',
+      textAlign: 'center', // Center align header text
     },
     row: {
       flexDirection: 'row',
@@ -51,10 +59,12 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
       borderColor: theme.colors.outline,
       alignItems: 'center',
       backgroundColor: theme.colors.surface,
+      paddingVertical: 4, // Added vertical padding
     },
     cell: {
       flex: 1,
-      padding: 8,
+      paddingHorizontal: 8, // Adjusted padding
+      textAlign: 'center', // Center align cell text
     },
     buttonContainer: {
       flexDirection: 'row',
@@ -64,6 +74,15 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
     leftButtons: {
       flexDirection: 'row',
       gap: 8,
+    },
+    deleteButton: {
+      backgroundColor: theme.colors.error,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 4,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: theme.colors.error,
     },
     rightButtons: {
       flexDirection: 'row',
@@ -80,6 +99,9 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
     },
     buttonText: {
       color: '#000',
+    },
+    deleteButtonText: {
+      color: theme.colors.onError,
     },
     checkboxCell: {
       width: 40,
@@ -102,14 +124,20 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
       flex: 1,
       padding: 4,
       height: 40,
-      textAlign: 'right',
-      paddingRight: 8,
+      textAlign: 'center', // Center align input text
+      paddingHorizontal: 8,
     },
     actionsCell: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
       width: 80,
+    },
+    // Added styles for better visual separation and alignment
+    rowNumberCell: {
+      flex: 0.5,
+      paddingHorizontal: 8,
+      textAlign: 'center',
     },
   });
 
@@ -133,15 +161,12 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
     const newRow: any = {};
     fields.forEach((field: ERPField) => {
       if (field.fieldtype === 'Int' || field.fieldtype === 'Float' || field.fieldtype === 'Currency') {
-        newRow[field.fieldname] = field.fieldname === 'quantity' ? 1 : 0;
+        newRow[field.fieldname] = 0;
       } else {
         newRow[field.fieldname] = '';
       }
     });
     const newData = [...data, newRow];
-    const rate = parseFloat(newRow.rate) || 0;
-    const quantity = parseFloat(newRow.quantity) || 0;
-    newRow.amount = (rate * quantity).toFixed(2);
     setData(newData);
     onValueChange(newData);
   };
@@ -152,14 +177,11 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
       const newRow: any = {};
       fields.forEach((field: ERPField) => {
         if (field.fieldtype === 'Int' || field.fieldtype === 'Float' || field.fieldtype === 'Currency') {
-          newRow[field.fieldname] = field.fieldname === 'quantity' ? 1 : 0;
+          newRow[field.fieldname] = 0;
         } else {
           newRow[field.fieldname] = '';
         }
       });
-      const rate = parseFloat(newRow.rate) || 0;
-      const quantity = parseFloat(newRow.quantity) || 0;
-      newRow.amount = (rate * quantity).toFixed(2);
       newRows.push(newRow);
     }
     const newData = [...data, ...newRows];
@@ -167,76 +189,88 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
     onValueChange(newData);
   };
 
+  const deleteRows = () => {
+    const newData = data.filter((_, index) => !selectedRows.includes(index));
+    setData(newData);
+    onValueChange(newData);
+  };
+
   const updateCell = (index: number, fieldname: string, value: any) => {
     const newData = [...data];
     newData[index] = { ...newData[index], [fieldname]: value };
-
-    if (fieldname === 'quantity' || fieldname === 'rate') {
-      const rate = parseFloat(newData[index].rate) || 0;
-      const quantity = parseFloat(newData[index].quantity) || 0;
-      newData[index].amount = (rate * quantity).toFixed(2);
-    }
-
-    if (newData[index].quantity < 0) {
-      Alert.alert('Validation Error', 'Quantity must be greater than or equal to 0');
-      return;
-    }
     setData(newData);
     onValueChange(newData);
   };
 
   const renderCell = (item: any, index: number, field: ERPField) => {
-    if (field.fieldname === 'new_image') {
-      return (
-        <View style={styles.imageCell} key={field.fieldname}>
-          {item[field.fieldname] ? (
-            <Image source={{ uri: item[field.fieldname] }} style={styles.imagePreview} />
-          ) : (
-            <Text>No Image</Text>
-          )}
-        </View>
-      );
-    } else if (field.fieldname === 'quantity') {
-      return (
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          <IconButton icon="minus" size={20} onPress={() => updateCell(index, 'quantity', Math.max(0, parseFloat(item.quantity || 0) - 1))} />
+    const fieldtype = field.fieldtype;
+
+    switch (fieldtype) {
+      case 'Int':
+      case 'Float':
+      case 'Currency':
+        return (
           <TextInput
-            key={field.fieldname}
             style={[styles.inputCell, { flex: 1 }]}
             keyboardType="numeric"
             value={item[field.fieldname]?.toString() || ''}
-            onChangeText={(text) => updateCell(index, field.fieldname, text)}
+            onChangeText={(text) => {
+              const parsedValue = fieldtype === 'Int' ? parseInt(text || '0', 10) : parseFloat(text || '0');
+              updateCell(index, field.fieldname, isNaN(parsedValue) ? 0 : parsedValue);
+            }}
           />
-          <IconButton icon="plus" size={20} onPress={() => updateCell(index, 'quantity', parseFloat(item.quantity || 0) + 1)} />
-        </View>
-      )
-    } else if (field.fieldname === 'rate') {
-      return (
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          <Text style={{ paddingLeft: 8 }}>৳</Text>
-          <TextInput
+        );
+      case 'Image':
+        return (
+          <View style={styles.imageCell} key={field.fieldname}>
+            {item[field.fieldname] ? (
+              <Image source={{ uri: item[field.fieldname] }} style={styles.imagePreview} />
+            ) : (
+              <Text>No Image</Text>
+            )}
+          </View>
+        );
+      case 'Link':
+        return (
+          <LinkField
             key={field.fieldname}
+            label={field.label}
+            value={item[field.fieldname]}
+            options={field.options || ''}
+            onValueChange={(val) => updateCell(index, field.fieldname, val)}
+            docType={docType}
+          />
+        );
+      default:
+        return (
+          <TextInput
             style={[styles.inputCell, { flex: 1 }]}
-            keyboardType="numeric"
             value={item[field.fieldname]?.toString() || ''}
             onChangeText={(text) => updateCell(index, field.fieldname, text)}
           />
-        </View>
-      )
-    } else if (field.fieldname === 'amount') {
-      return (
-        <Text key={field.fieldname} style={[styles.cell, { textAlign: 'right' }]}>
-          ৳ {item[field.fieldname]}
-        </Text>
-      );
-    } else {
-      return (
-        <Text key={field.fieldname} style={styles.cell}>
-          {item[field.fieldname]}
-        </Text>
-      );
+        );
     }
   };
+
+  const renderRow = ({ item, index }: { item: any, index: number }) => (
+    <View style={styles.row} key={index}>
+      <View style={styles.checkboxCell}>
+        <Checkbox
+          status={selectedRows.includes(index) ? 'checked' : 'unchecked'}
+          onPress={() => handleSelectRow(index)}
+        />
+      </View>
+      <Text style={styles.rowNumberCell}>{index + 1}</Text>
+      {fields
+        .filter((field) => field.in_list_view === 1)
+        .map((field: ERPField) => (
+          <View style={{ flex: 1 }} key={field.fieldname}>
+            {renderCell(item, index, field)}
+          </View>
+        ))}
+      <View style={styles.actionsCell} />
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -250,33 +284,20 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
             />
           </View>
           <Text style={[styles.headerCell, { flex: 0.5 }]}>No.</Text>
-          {fields.map((field: ERPField) => (
-            <Text key={field.fieldname} style={styles.headerCell}>
-              {field.label}
-            </Text>
-          ))}
-          <View style={styles.actionsCell}>
-            <IconButton icon="cog" size={20} />
-          </View>
+          {fields
+            .filter((field) => field.in_list_view === 1)
+            .map((field: ERPField) => (
+              <Text key={field.fieldname} style={styles.headerCell}>
+                {field.label}
+              </Text>
+            ))}
+          <View style={styles.actionsCell} />
         </View>
         <FlatList
           data={data}
-          renderItem={({ item, index }) => (
-            <View style={styles.row}>
-              <View style={styles.checkboxCell}>
-                <Checkbox
-                  status={selectedRows.includes(index) ? 'checked' : 'unchecked'}
-                  onPress={() => handleSelectRow(index)}
-                />
-              </View>
-              <Text style={[styles.cell, { flex: 0.5 }]}>{index + 1}</Text>
-              {fields.map((field: ERPField) => renderCell(item, index, field))}
-              <View style={styles.actionsCell}>
-                <IconButton icon="pencil" size={20} onPress={() => {}} />
-              </View>
-            </View>
-          )}
+          renderItem={renderRow}
           keyExtractor={(item, index) => index.toString()}
+          style={{ flex: 1 }} // Added flex: 1 to FlatList
         />
       </View>
       <View style={styles.buttonContainer}>
@@ -287,15 +308,13 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
           <TouchableOpacity style={styles.button} onPress={addMultipleRows}>
             <Text style={styles.buttonText}>Add Multiple</Text>
           </TouchableOpacity>
+          {selectedRows.length > 0 && (
+            <TouchableOpacity style={styles.deleteButton} onPress={deleteRows}>
+              <Text style={styles.deleteButtonText}>Delete</Text>
+            </TouchableOpacity>
+          )}
         </View>
-        <View style={styles.rightButtons}>
-          <TouchableOpacity style={styles.button} onPress={() => {}}>
-            <Text style={styles.buttonText}>Download</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.button} onPress={() => {}}>
-            <Text style={styles.buttonText}>Upload</Text>
-          </TouchableOpacity>
-        </View>
+        <View style={styles.rightButtons} />
       </View>
     </View>
   );

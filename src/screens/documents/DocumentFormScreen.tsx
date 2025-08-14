@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, ScrollView, RefreshControl, useWindowDimensions } from 'react-native';
+import { View, StyleSheet, FlatList, RefreshControl, useWindowDimensions } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator, useTheme, Card, Subheading, Checkbox } from 'react-native-paper';
 import { useForm, FormProvider } from 'react-hook-form';
-import { TabView, SceneMap, TabBar } from 'react-native-tab-view';
+import { TabView, TabBar } from 'react-native-tab-view';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { MainStackParamList } from '../../navigation/MainNavigator';
@@ -27,7 +27,7 @@ type Props = {
 };
 
 const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
-  const { docType, docName, mode } = route.params;
+  const { docType = '', docName = '', mode = 'create' } = route.params || {};
   const methods = useForm();
   const { control, handleSubmit, setValue, watch } = methods;
   const formData = watch();
@@ -91,20 +91,24 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   const fetchMetadata = async () => {
+    if (!docType) {
+      setLoading(false);
+      setError('Document type is missing.');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
       const result = await getDocTypeMetadata(docType);
       if (result.data) {
         const parentFields = result.data.fields;
-        const childFetchPromises = parentFields
+        const childFetchPromises = (parentFields || [])
           .filter((f: ERPField) => f.fieldtype === 'Table' && f.options)
           .map((f: ERPField) => getDocTypeMetadata(f.options!));
         
         const childMetaResults = await Promise.all(childFetchPromises);
         const childFields = childMetaResults.flatMap(res => res.data ? res.data.fields : []);
 
-        console.log('All fields:', [...parentFields, ...childFields]);
         setFields([...parentFields, ...childFields]);
         setFieldOrder(result.data.field_order);
       } else {
@@ -118,6 +122,11 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const fetchDocument = async (isRefreshing = false) => {
+    if (!docType) {
+      setLoading(false);
+      setError('Document type is missing.');
+      return;
+    }
     if (mode === 'edit' && docName) {
       if (isRefreshing) {
         setRefreshing(true);
@@ -142,7 +151,8 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
         }
 
         if (metaResult.data) {
-          const parentFields = metaResult.data.fields;
+
+          const parentFields = metaResult.data.fields || [];
           const childFetchPromises = parentFields
             .filter((f: ERPField) => f.fieldtype === 'Table' && f.options)
             .map((f: ERPField) => getDocTypeMetadata(f.options!));
@@ -151,15 +161,10 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
           const childFields = childMetaResults.flatMap(res => res.data ? res.data.fields : []);
           
           const allFields = [...parentFields, ...childFields];
-          console.log('All fields:', allFields);
-          const sortedFields = metaResult.data.field_order
-            .map((fieldname: string) => allFields.find((f: ERPField) => f.fieldname === fieldname))
-            .filter(Boolean);
-
-          setFields(sortedFields);
+          setFields(allFields);
           setFieldOrder(metaResult.data.field_order);
 
-          const tabFields = sortedFields.filter((f: ERPField) => f.fieldtype === 'Tab Break');
+          const tabFields = (metaResult.data.fields || []).filter((f: ERPField) => f.fieldtype === 'Tab Break');
           if (tabFields.length > 0) {
             const firstTab = { key: 'details_tab', title: 'Details' };
             const otherTabs = tabFields.map((f: ERPField) => ({ key: f.fieldname, title: f.label }));
@@ -258,8 +263,31 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
     );
   }
 
+  let effectiveFieldOrder = fieldOrder;
+  if (!effectiveFieldOrder || effectiveFieldOrder.length === 0) {
+    if (fields && fields.length > 0) {
+      effectiveFieldOrder = fields.map(f => f.fieldname);
+      console.warn('fieldOrder is missing, using fields.map(f => f.fieldname) as fallback.');
+    } else {
+      effectiveFieldOrder = [];
+    }
+  }
+  const orderedFields = (effectiveFieldOrder || [])
+    .map(fieldname => (fields || []).find(f => f.fieldname === fieldname))
+    .filter(Boolean) as ERPField[];
+
+  // Debug logs
+  console.log('fields:', fields);
+  console.log('fieldOrder:', fieldOrder);
+  console.log('orderedFields:', orderedFields);
+
   const renderField = (field: ERPField) => {
     const fieldType = field.fieldtype.toLowerCase();
+
+    // Helper to get label with optional asterisk
+    const getLabel = (label: string, isRequired?: number) => {
+      return isRequired ? `${label} *` : label;
+    };
 
     switch (fieldType) {
       case 'select':
@@ -268,7 +296,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
           return (
             <View key={field.fieldname} style={styles.fieldContainer}>
               <SelectField
-                label={field.label}
+                label={getLabel(field.label, field.reqd)}
                 options={options}
                 selectedValue={formData[field.fieldname] ? String(formData[field.fieldname]) : ''}
                 onValueChange={(value) => handleInputChange(field.fieldname, value)}
@@ -283,10 +311,11 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
           return (
             <View key={field.fieldname} style={styles.fieldContainer}>
               <LinkField
-                label={field.label}
+                label={getLabel(field.label, field.reqd)}
                 value={formData[field.fieldname] ? String(formData[field.fieldname]) : ''}
                 onValueChange={(text) => handleInputChange(field.fieldname, text)}
-                docType={field.options}
+                options={field.options} // Pass field.options as the options prop
+                docType={docType} // Pass the parent docType
               />
             </View>
           );
@@ -297,9 +326,10 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
         return (
           <View key={field.fieldname} style={styles.fieldContainer}>
             <Checkbox.Item
-              label={field.label}
+              label={getLabel(field.label, field.reqd)}
               status={formData[field.fieldname] ? 'checked' : 'unchecked'}
               onPress={() => handleInputChange(field.fieldname, !formData[field.fieldname])}
+              disabled={!!field.read_only}
             />
           </View>
         );
@@ -309,7 +339,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
         return (
           <View key={field.fieldname} style={styles.fieldContainer}>
             <RatingField
-              label={field.label}
+              label={getLabel(field.label, field.reqd)}
               value={Number(formData[field.fieldname]) || 0}
               onValueChange={(value) => handleInputChange(field.fieldname, value)}
             />
@@ -318,14 +348,14 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
       case 'section break':
         return (
-          <Subheading key={field.fieldname} style={styles.subheading}>
+          <Subheading key={field.fieldname} style={[styles.subheading, field.bold ? { fontWeight: 'bold' } : {}]}>
             {field.label}
           </Subheading>
         );
 
       case 'column break':
         return (
-          <Subheading key={field.fieldname} style={styles.subheading}>
+          <Subheading key={field.fieldname} style={[styles.subheading, field.bold ? { fontWeight: 'bold' } : {}]}>
             {field.label}
           </Subheading>
         );
@@ -333,12 +363,26 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
       case 'table':
       case 'child table':
         if (field.options) {
-          const childFields = fields.filter((f: ERPField) => f.parent === field.options);
+          // Debug log for all fields and current table field
+          console.log('All fields:', fields);
+          console.log('Rendering TableField for:', field.fieldname, 'with options:', field.options);
+          const childFields = fields.filter((f: ERPField) => {
+            const match = f.parent === field.options;
+            if (match) {
+              console.log('Matched child field:', f.fieldname, 'parent:', f.parent);
+            }
+            return match;
+          });
+          if (childFields.length === 0) {
+            console.warn('No child fields found for table:', field.fieldname, 'with options:', field.options);
+          }
+          // Always pass an array for value
+          const tableValue = Array.isArray(formData[field.fieldname]) ? formData[field.fieldname] : [];
           return (
             <View key={field.fieldname} style={styles.fieldContainer}>
               <TableField
-                label={field.label}
-                value={formData[field.fieldname] || []}
+                label={getLabel(field.label, field.reqd)}
+                value={tableValue}
                 onValueChange={(value) => handleInputChange(field.fieldname, value)}
                 fields={childFields}
                 docType={field.options}
@@ -360,7 +404,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
           return (
             <View key={field.fieldname} style={styles.fieldContainer}>
               <DynamicLinkField
-                label={field.label}
+                label={getLabel(field.label, field.reqd)}
                 value={formData[field.fieldname] ? String(formData[field.fieldname]) : ''}
                 onValueChange={(text) => handleInputChange(field.fieldname, text)}
                 options={field.options}
@@ -374,13 +418,14 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
         return (
           <View key={field.fieldname} style={styles.fieldContainer}>
             <TextInput
-              label={field.label}
+              label={getLabel(field.label, field.reqd)}
               value={formData[field.fieldname] ? String(formData[field.fieldname]) : ''}
               onChangeText={(text) => handleInputChange(field.fieldname, text)}
               style={styles.input}
               multiline
               numberOfLines={4}
               placeholder=" "
+              editable={!field.read_only}
             />
           </View>
         );
@@ -392,12 +437,13 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
         return (
           <View key={field.fieldname} style={styles.fieldContainer}>
             <TextInput
-              label={field.label}
+              label={getLabel(field.label, field.reqd)}
               value={formData[field.fieldname] ? String(formData[field.fieldname]) : ''}
               onChangeText={(text) => handleInputChange(field.fieldname, text)}
               style={styles.input}
               keyboardType="numeric"
               placeholder=" "
+              editable={!field.read_only}
             />
           </View>
         );
@@ -415,7 +461,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
         return (
           <View key={field.fieldname} style={styles.fieldContainer}>
             <TextInput
-              label={field.label}
+              label={getLabel(field.label, field.reqd)}
               value={formData[field.fieldname] ? String(formData[field.fieldname]) : ''}
               editable={false}
               style={styles.input}
@@ -467,11 +513,12 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
         return (
           <View key={field.fieldname} style={styles.fieldContainer}>
             <TextInput
-              label={field.label}
+              label={getLabel(field.label, field.reqd)}
               value={formData[field.fieldname] ? String(formData[field.fieldname]) : ''}
               onChangeText={(text) => handleInputChange(field.fieldname, text)}
               style={styles.input}
               placeholder=" "
+              editable={!field.read_only}
             />
           </View>
         );
@@ -480,19 +527,19 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const renderScene = ({ route }: { route: { key: string } }) => {
     let fieldsInTab: ERPField[] = [];
-    const firstTabBreakIndex = fields.findIndex(f => f.fieldtype === 'Tab Break');
+    const firstTabBreakIndex = orderedFields.findIndex(f => f.fieldtype === 'Tab Break');
 
     if (route.key === 'details_tab') {
       // Fields for the first tab are all fields until the first Tab Break
-      fieldsInTab = firstTabBreakIndex === -1 ? [...fields] : fields.slice(0, firstTabBreakIndex);
+      fieldsInTab = firstTabBreakIndex === -1 ? [...orderedFields] : orderedFields.slice(0, firstTabBreakIndex);
     } else {
       // Logic for subsequent tabs
-      const currentTabBreakIndex = fields.findIndex(f => f.fieldname === route.key);
+      const currentTabBreakIndex = orderedFields.findIndex(f => f.fieldname === route.key);
       
       // Find the next tab break after the current one
       let nextTabBreakIndex = -1;
-      for (let i = currentTabBreakIndex + 1; i < fields.length; i++) {
-        if (fields[i].fieldtype === 'Tab Break') {
+      for (let i = currentTabBreakIndex + 1; i < orderedFields.length; i++) {
+        if (orderedFields[i].fieldtype === 'Tab Break') {
           nextTabBreakIndex = i;
           break;
         }
@@ -500,16 +547,13 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
       const start = currentTabBreakIndex + 1;
       const end = nextTabBreakIndex === -1 ? undefined : nextTabBreakIndex;
-      fieldsInTab = fields.slice(start, end);
+      fieldsInTab = orderedFields.slice(start, end);
     }
 
     return (
       <FlatList
         style={styles.contentContainer}
         data={fieldsInTab.filter((field) => {
-          if (field.parent !== docType) {
-            return false;
-          }
           if (field.hidden || field.read_only || field.fieldtype === 'Section Break') {
             return false;
           }
@@ -565,40 +609,47 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
       );
     }
 
+    const visibleFields = orderedFields.filter((field) => {
+      if (field.hidden || field.read_only || field.fieldtype === 'Section Break') {
+        return false;
+      }
+      if (field.depends_on) {
+        try {
+          const condition = field.depends_on.startsWith('eval:')
+            ? field.depends_on.substring(5)
+            : `doc.${field.depends_on}`;
+          const safeFormData = new Proxy(formData, {
+            get: (target, prop) => {
+              if (typeof prop === 'string') {
+                return prop in target ? target[prop] : undefined;
+              }
+              return undefined;
+            },
+          });
+          const result = new Function('doc', `try { return ${condition}; } catch (e) { return false; }`)(safeFormData);
+          return !!result;
+        } catch (e) {
+          console.error(`Error evaluating depends_on for ${field.fieldname}:`, e);
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (visibleFields.length === 0) {
+      return (
+        <View style={{ padding: 24, alignItems: 'center' }}>
+          <Text>No fields to display.</Text>
+        </View>
+      );
+    }
+
     return (
       <FlatList
         style={styles.contentContainer}
-        data={fields.filter((field) => {
-          if (field.parent !== docType) {
-            return false;
-          }
-          if (field.hidden || field.read_only || field.fieldtype === 'Section Break') {
-            return false;
-          }
-          if (field.depends_on) {
-            try {
-              const condition = field.depends_on.startsWith('eval:')
-                ? field.depends_on.substring(5)
-                : `doc.${field.depends_on}`;
-              const safeFormData = new Proxy(formData, {
-                get: (target, prop) => {
-                  if (typeof prop === 'string') {
-                    return prop in target ? target[prop] : undefined;
-                  }
-                  return undefined;
-                },
-              });
-              const result = new Function('doc', `return ${condition}`)(safeFormData);
-              return !!result;
-            } catch (e) {
-              console.error(`Error evaluating depends_on for ${field.fieldname}:`, e);
-              return false;
-            }
-          }
-          return true;
-        })}
-        renderItem={({ item }) => renderField(item)}
-        keyExtractor={(item) => `${item.parent}-${item.fieldname}`}
+        data={visibleFields}
+        renderItem={({ item, index }) => renderField(item)}
+        keyExtractor={(item, index) => `${item.parent || ''}-${item.fieldname}-${index}`}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       />
     );
