@@ -257,8 +257,8 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.yourcompany.erpnextmobile";
-				PRODUCT_NAME = "ERPNextMobile";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.primetechbd.primeerpmobile";
+				PRODUCT_NAME = "PrimeERPMobile";
 				SWIFT_OBJC_BRIDGING_HEADER = "ERPNextMobile/ERPNextMobile-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -286,8 +286,8 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.yourcompany.erpnextmobile";
-				PRODUCT_NAME = "ERPNextMobile";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.primetechbd.primeerpmobile";
+				PRODUCT_NAME = "PrimeERPMobile";
 				SWIFT_OBJC_BRIDGING_HEADER = "ERPNextMobile/ERPNextMobile-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";

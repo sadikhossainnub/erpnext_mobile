@@ -128,12 +128,19 @@ export const DocTypeListScreen: React.FC<Props> = ({ navigation, route }) => {
       <TouchableOpacity onPress={() => handleDocumentPress(item)}>
         <Card style={styles.documentCard}>
           <Card.Content>
-            <Text style={styles.documentName}>{item.name}</Text>
+            <View style={styles.documentHeader}>
+              <Text style={styles.documentName}>{item.name}</Text>
+              {item.docstatus !== undefined && (
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.docstatus) }]}>
+                  <Text style={styles.statusText}>{getStatusLabel(item.docstatus)}</Text>
+                </View>
+              )}
+            </View>
             {item.owner && owners[item.owner] && (
               <Text style={styles.ownerText}>Owner: {owners[item.owner]}</Text>
             )}
             {Object.entries(item).map(([key, value]) => {
-              if (key !== 'name' && key !== 'modified' && key !== 'owner' && value) {
+              if (key !== 'name' && key !== 'modified' && key !== 'owner' && key !== 'docstatus' && value) {
                 return (
                   <Text key={key} style={styles.documentInfo}>
                     {getFieldLabel(key)}: {value}
@@ -281,9 +288,27 @@ const styles = StyleSheet.create({
   documentCard: {
     marginBottom: 8,
   },
+  documentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   documentName: {
     fontSize: 16,
     fontWeight: '500',
+    flexShrink: 1,
+    marginRight: 8,
+  },
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   ownerText: {
     fontSize: 14,
@@ -320,5 +345,31 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 });
+
+const getStatusColor = (docstatus: number) => {
+  switch (docstatus) {
+    case 0: // Draft
+      return '#FFC107'; // Amber
+    case 1: // Submitted
+      return '#4CAF50'; // Green
+    case 2: // Cancelled
+      return '#F44336'; // Red
+    default:
+      return '#9E9E9E'; // Grey
+  }
+};
+
+const getStatusLabel = (docstatus: number) => {
+  switch (docstatus) {
+    case 0:
+      return 'Draft';
+    case 1:
+      return 'Submitted';
+    case 2:
+      return 'Cancelled';
+    default:
+      return 'Unknown';
+  }
+};
 
 export default DocTypeListScreen;

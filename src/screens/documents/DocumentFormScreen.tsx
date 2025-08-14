@@ -8,6 +8,7 @@ import { RouteProp } from '@react-navigation/native';
 import { MainStackParamList } from '../../navigation/MainNavigator';
 import { getDocument, updateDocument, createDocument, getDocTypeMetadata, createSalesOrderFromQuotation } from '../../api/documents';
 import { ERPDocument, ERPField } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
 import LinkField from './LinkField';
 import RatingField from './RatingField';
 import TableField from './TableField';
@@ -41,6 +42,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
   const layout = useWindowDimensions();
+  const { user } = useAuth();
 
   const [index, setIndex] = useState(0);
   const [routes, setRoutes] = useState<{ key: string; title: string }[]>([]);
@@ -208,9 +210,9 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
     try {
       let result;
       if (mode === 'edit' && docName) {
-        result = await updateDocument(docType, docName, data);
+        result = await updateDocument(user, docType, docName, data);
       } else {
-        result = await createDocument(docType, data);
+        result = await createDocument(user, docType, data);
       }
 
       if (result.data) {

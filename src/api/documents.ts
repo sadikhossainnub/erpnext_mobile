@@ -1,5 +1,6 @@
 import apiClient from './client';
-import { ERPDocument, ERPNextResponse } from '../types';
+import { ERPDocument, ERPNextResponse, DocPerm, User } from '../types';
+import { hasPermission } from '../utils/permissions';
 
 interface ListResponse {
   message: ERPDocument[];
@@ -11,7 +12,7 @@ interface DocResponse {
 }
 
 interface MetaResponse {
-  docs: { fields: any[] }[];
+  docs: { fields: any[]; permissions: DocPerm[] }[];
 }
 
 export const getDocList = async (
@@ -73,10 +74,20 @@ export const getDocument = async (
 };
 
 export const createDocument = async (
+  user: User | null,
   docType: string,
   docData: Partial<ERPDocument>
 ): Promise<ERPNextResponse<ERPDocument>> => {
   try {
+    const metaRes = await getDocTypeMetadata(docType);
+    if (metaRes.data && metaRes.data.permissions) {
+      if (!hasPermission(user, metaRes.data.permissions, 'create')) {
+        return { error: 'You do not have permission to create this document type.' };
+      }
+    } else {
+      return { error: 'Failed to fetch document type metadata for permission check.' };
+    }
+
     const response = await apiClient.post<DocResponse>(`/api/resource/${docType}`, docData);
     
     if (response.data) {
@@ -90,11 +101,29 @@ export const createDocument = async (
 };
 
 export const updateDocument = async (
+  user: User | null,
   docType: string,
   docName: string,
   docData: Partial<ERPDocument>
 ): Promise<ERPNextResponse<ERPDocument>> => {
   try {
+    const metaRes = await getDocTypeMetadata(docType);
+    if (metaRes.data && metaRes.data.permissions) {
+      // For update, we also need to consider if_owner permission.
+      // We need to fetch the document first to get its owner.
+      const existingDocRes = await getDocument(docType, docName);
+      if (existingDocRes.error || !existingDocRes.data) {
+        return { error: existingDocRes.error || 'Failed to fetch existing document for permission check.' };
+      }
+      const docOwner = existingDocRes.data.owner;
+
+      if (!hasPermission(user, metaRes.data.permissions, 'write', docOwner)) {
+        return { error: 'You do not have permission to update this document.' };
+      }
+    } else {
+      return { error: 'Failed to fetch document type metadata for permission check.' };
+    }
+
     const response = await apiClient.put<DocResponse>(`/api/resource/${docType}/${docName}`, docData);
     
     if (response.data) {
@@ -108,10 +137,28 @@ export const updateDocument = async (
 };
 
 export const deleteDocument = async (
+  user: User | null,
   docType: string,
   docName: string
 ): Promise<ERPNextResponse<null>> => {
   try {
+    const metaRes = await getDocTypeMetadata(docType);
+    if (metaRes.data && metaRes.data.permissions) {
+      // For delete, we also need to consider if_owner permission.
+      // We need to fetch the document first to get its owner.
+      const existingDocRes = await getDocument(docType, docName);
+      if (existingDocRes.error || !existingDocRes.data) {
+        return { error: existingDocRes.error || 'Failed to fetch existing document for permission check.' };
+      }
+      const docOwner = existingDocRes.data.owner;
+
+      if (!hasPermission(user, metaRes.data.permissions, 'delete', docOwner)) {
+        return { error: 'You do not have permission to delete this document.' };
+      }
+    } else {
+      return { error: 'Failed to fetch document type metadata for permission check.' };
+    }
+
     await apiClient.delete(`/api/resource/${docType}/${docName}`);
     return { message: 'Document deleted successfully' };
   } catch (error) {

@@ -7,7 +7,7 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>
-    <string>ERPNext Mobile</string>
+    <string>Prime ERP Mobile</string>
     <key>CFBundleExecutable</key>
     <string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key>
@@ -27,7 +27,7 @@
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
-          <string>com.yourcompany.erpnextmobile</string>
+          <string>com.primetechbd.primeerpmobile</string>
         </array>
       </dict>
     </array>
@@ -44,6 +44,10 @@
       <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
+    <key>UIAppFonts</key>
+    <array>
+      <string>MaterialCommunityIcons.ttf</string>
+    </array>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>
@@ -70,9 +74,5 @@
     <string>Light</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
-    <key>UIAppFonts</key>
-    <array>
-      <string>MaterialCommunityIcons.ttf</string>
-    </array>
   </dict>
 </plist>

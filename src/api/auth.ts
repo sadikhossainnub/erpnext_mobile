@@ -6,6 +6,23 @@ interface LoginResponse {
   full_name: string;
 }
 
+interface UserRolesResponse {
+  message: string[];
+}
+
+export const get_user_roles = async (): Promise<ERPNextResponse<string[]>> => {
+  try {
+    const response = await apiClient.get<UserRolesResponse>('/api/method/frappe.client.get_user_roles');
+    if (response.data && Array.isArray(response.data.message)) {
+      return { data: response.data.message };
+    } else {
+      return { error: 'Failed to fetch user roles' };
+    }
+  } catch (error) {
+    return { error: 'An unexpected error occurred while fetching user roles' };
+  }
+};
+
 export const login = async (email: string, password: string): Promise<ERPNextResponse<User>> => {
   try {
     const response = await apiClient.post<LoginResponse>('/api/method/login', {
@@ -16,12 +33,16 @@ export const login = async (email: string, password: string): Promise<ERPNextRes
     console.log('Login response:', response);
 
     if (response.data && response.data.message === 'Logged In') {
-      // Assuming the user's full name is returned in the response
+      const rolesResponse = await get_user_roles();
+      if (rolesResponse.error) {
+        return { error: `Login successful, but failed to fetch roles: ${rolesResponse.error}` };
+      }
+
       const user: User = {
         id: email,
         email: email,
         fullName: response.data.full_name || 'User',
-        roles: [], // Roles might need to be fetched separately
+        roles: rolesResponse.data || [],
       };
       return { data: user };
     } else {

@@ -160,7 +160,43 @@ export interface ERPDocument {
   modified: string;
   creation: string;
   owner: string;
+  permissions?: DocPerm[];
   [key: string]: any;
+  status?: DocStatus;
+}
+
+export type DocStatus =
+  | 'Draft'
+  | 'Cancel'
+  | 'Submitted'
+  | 'Approve'
+  | 'Reject'
+  | 'Pending'
+  | 'Overdue'
+  | 'Bill'
+  | 'Bill to Delivery'
+  | 'Unpaid'
+  | 'Paid'
+  | 'Partly Paid'
+  | 'Partly Paid and Discounted'
+  | 'Return'
+  | 'Credit Note Issued';
+
+export interface DocPerm {
+  read: 0 | 1;
+  write: 0 | 1;
+  create: 0 | 1;
+  delete: 0 | 1;
+  submit: 0 | 1;
+  cancel: 0 | 1;
+  amend: 0 | 1;
+  report: 0 | 1;
+  export: 0 | 1;
+  print: 0 | 1;
+  email: 0 | 1;
+  if_owner: 0 | 1;
+  permlevel: number;
+  role: string;
 }
 
 // Dashboard Types

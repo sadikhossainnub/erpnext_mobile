@@ -6,7 +6,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { MainStackParamList } from '../../navigation/MainNavigator';
 import { getDocument, deleteDocument, getDocTypeMetadata } from '../../api/documents';
-import { ERPDocument } from '../../types';
+import { ERPDocument, DocPerm } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { hasPermission } from '../../utils/permissions';
 
 type Props = {
   navigation: NativeStackNavigationProp<MainStackParamList, 'DocumentDetail'>;
@@ -22,6 +24,7 @@ export const DocumentDetailScreen: React.FC<Props> = ({ navigation, route }) => 
   const [error, setError] = useState<string | null>(null);
   const theme = useTheme();
   const { width } = useWindowDimensions();
+  const { user } = useAuth();
 
   const fetchDocument = async (showRefreshing = false) => {
     if (showRefreshing) {
@@ -89,7 +92,7 @@ export const DocumentDetailScreen: React.FC<Props> = ({ navigation, route }) => 
           onPress: async () => {
             try {
               setLoading(true);
-              const result = await deleteDocument(docType, docName);
+              const result = await deleteDocument(user, docType, docName);
               if (!result.error) {
                 navigation.goBack();
               } else {
@@ -106,6 +109,13 @@ export const DocumentDetailScreen: React.FC<Props> = ({ navigation, route }) => 
       { cancelable: true }
     );
   };
+
+  const canEdit = docMeta?.permissions && document?.owner
+    ? hasPermission(user, docMeta.permissions, 'write', document.owner)
+    : false;
+  const canDelete = docMeta?.permissions && document?.owner
+    ? hasPermission(user, docMeta.permissions, 'delete', document.owner)
+    : false;
 
   if (loading && !refreshing) {
     return (
@@ -132,8 +142,17 @@ export const DocumentDetailScreen: React.FC<Props> = ({ navigation, route }) => 
         <>
           <Card style={styles.card}>
             <Card.Content>
-              <Text style={styles.title}>{document.name}</Text>
-              <Text style={styles.docType}>{docType}</Text>
+              <View style={styles.headerContainer}>
+                <View>
+                  <Text style={styles.title}>{document.name}</Text>
+                  <Text style={styles.docType}>{docType}</Text>
+                </View>
+                {document.docstatus !== undefined && (
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(document.docstatus) }]}>
+                    <Text style={styles.statusText}>{getStatusLabel(document.docstatus)}</Text>
+                  </View>
+                )}
+              </View>
               
               <Divider style={styles.divider} />
               
@@ -151,7 +170,7 @@ export const DocumentDetailScreen: React.FC<Props> = ({ navigation, route }) => 
               <View style={styles.fieldsContainer}>
                 {docMeta?.fields.map((field: any) => {
                   const value = document[field.fieldname];
-                  if (['name', 'doctype', 'creation', 'modified', 'owner'].includes(field.fieldname) || field.hidden || !value) {
+                  if (['name', 'doctype', 'creation', 'modified', 'owner', 'docstatus'].includes(field.fieldname) || field.hidden || !value) {
                     return null;
                   }
                   return (
@@ -173,24 +192,28 @@ export const DocumentDetailScreen: React.FC<Props> = ({ navigation, route }) => 
           </Card>
 
           <View style={styles.buttonContainer}>
-            <Button
-              mode="contained"
-              onPress={handleEdit}
-              style={[styles.button, styles.editButton]}
-              icon="pencil"
-            >
-              Edit
-            </Button>
+            {canEdit && (
+              <Button
+                mode="contained"
+                onPress={handleEdit}
+                style={[styles.button, styles.editButton]}
+                icon="pencil"
+              >
+                Edit
+              </Button>
+            )}
             
-            <Button
-              mode="contained"
-              onPress={handleDelete}
-              style={[styles.button, styles.deleteButton]}
-              buttonColor="#f44336"
-              icon="delete"
-            >
-              Delete
-            </Button>
+            {canDelete && (
+              <Button
+                mode="contained"
+                onPress={handleDelete}
+                style={[styles.button, styles.deleteButton]}
+                buttonColor="#f44336"
+                icon="delete"
+              >
+                Delete
+              </Button>
+            )}
           </View>
         </>
       ) : (
@@ -202,7 +225,49 @@ export const DocumentDetailScreen: React.FC<Props> = ({ navigation, route }) => 
   );
 };
 
+const getStatusColor = (docstatus: number) => {
+  switch (docstatus) {
+    case 0: // Draft
+      return '#FFC107'; // Amber
+    case 1: // Submitted
+      return '#4CAF50'; // Green
+    case 2: // Cancelled
+      return '#F44336'; // Red
+    default:
+      return '#9E9E9E'; // Grey
+  }
+};
+
+const getStatusLabel = (docstatus: number) => {
+  switch (docstatus) {
+    case 0:
+      return 'Draft';
+    case 1:
+      return 'Submitted';
+    case 2:
+      return 'Cancelled';
+    default:
+      return 'Unknown';
+  }
+};
+
 const styles = StyleSheet.create({
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
   fieldsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
