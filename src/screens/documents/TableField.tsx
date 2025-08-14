@@ -45,13 +45,17 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
       backgroundColor: theme.colors.surfaceVariant,
       alignItems: 'center',
       paddingVertical: 8, // Added vertical padding
+      flexWrap: 'wrap', // Allow header cells to wrap
     },
     headerCell: {
-      flex: 1,
-      paddingHorizontal: 8, // Adjusted padding
+      flexGrow: 1,
+      flexShrink: 1,
+      flexBasis: 0, // Allow content to determine initial size
+      paddingHorizontal: 4, // Adjusted padding
       color: theme.colors.onSurfaceVariant,
       fontWeight: 'bold',
       textAlign: 'center', // Center align header text
+      minWidth: 100, // Increased minimum width for better readability
     },
     row: {
       flexDirection: 'row',
@@ -62,9 +66,12 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
       paddingVertical: 4, // Added vertical padding
     },
     cell: {
-      flex: 1,
-      paddingHorizontal: 8, // Adjusted padding
+      flexGrow: 1,
+      flexShrink: 1,
+      flexBasis: 0, // Allow content to determine initial size
+      paddingHorizontal: 4, // Adjusted padding
       textAlign: 'center', // Center align cell text
+      minWidth: 100, // Increased minimum width for better readability
     },
     buttonContainer: {
       flexDirection: 'row',
@@ -121,7 +128,6 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
       borderRadius: 4,
     },
     inputCell: {
-      flex: 1,
       padding: 4,
       height: 40,
       textAlign: 'center', // Center align input text
@@ -138,6 +144,12 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
       flex: 0.5,
       paddingHorizontal: 8,
       textAlign: 'center',
+    },
+    linkFieldCell: {
+      flexGrow: 2, // Allow LinkField to grow more
+      flexShrink: 1,
+      flexBasis: 0, // Allow content to determine initial size
+      minWidth: 150, // Increased minimum width for LinkField
     },
   });
 
@@ -232,14 +244,16 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
         );
       case 'Link':
         return (
-          <LinkField
-            key={field.fieldname}
-            label={field.label}
-            value={item[field.fieldname]}
-            options={field.options || ''}
-            onValueChange={(val) => updateCell(index, field.fieldname, val)}
-            docType={docType}
-          />
+          <View style={styles.linkFieldCell}>
+            <LinkField
+              key={field.fieldname}
+              label={field.label}
+              value={item[field.fieldname]}
+              options={field.options || ''}
+              onValueChange={(val) => updateCell(index, field.fieldname, val)}
+              docType={docType}
+            />
+          </View>
         );
       default:
         return (
@@ -264,7 +278,7 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
       {fields
         .filter((field) => field.in_list_view === 1)
         .map((field: ERPField) => (
-          <View style={{ flex: 1 }} key={field.fieldname}>
+          <View style={styles.cell} key={field.fieldname}>
             {renderCell(item, index, field)}
           </View>
         ))}
@@ -287,7 +301,7 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
           {fields
             .filter((field) => field.in_list_view === 1)
             .map((field: ERPField) => (
-              <Text key={field.fieldname} style={styles.headerCell}>
+              <Text key={field.fieldname} style={[styles.headerCell, field.fieldtype === 'Link' ? styles.linkFieldCell : {}]}>
                 {field.label}
               </Text>
             ))}
@@ -297,7 +311,6 @@ const TableField: React.FC<TableFieldProps> = ({ label, value, onValueChange, fi
           data={data}
           renderItem={renderRow}
           keyExtractor={(item, index) => index.toString()}
-          style={{ flex: 1 }} // Added flex: 1 to FlatList
         />
       </View>
       <View style={styles.buttonContainer}>

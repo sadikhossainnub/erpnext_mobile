@@ -19,22 +19,21 @@ const LinkField: React.FC<LinkFieldProps> = ({ label, value, onValueChange, opti
 
   const styles = StyleSheet.create({
     container: {
-      marginBottom: 16,
+      // Removed marginBottom to prevent extra spacing in table cells
     },
     label: {
-      fontSize: 16,
-      marginBottom: 8,
-      color: theme.colors.onSurface,
+      // Label is rendered by TableField, so no need for it here
+      display: 'none', // Hide the label
     },
     inputContainer: {
       backgroundColor: theme.colors.surface,
       borderRadius: 4,
       borderWidth: 1,
       borderColor: theme.colors.backdrop,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
+      paddingHorizontal: 8, // Adjusted padding
+      paddingVertical: 4, // Adjusted padding
       justifyContent: 'center',
-      minHeight: 56, // Match TextInput height
+      minHeight: 40, // Adjusted to be more compact for table cells
     },
     inputText: {
       fontSize: 16,
@@ -53,7 +52,6 @@ const LinkField: React.FC<LinkFieldProps> = ({ label, value, onValueChange, opti
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
       <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.inputContainer}>
         {value ? (
           <Text style={styles.inputText}>{value}</Text>
