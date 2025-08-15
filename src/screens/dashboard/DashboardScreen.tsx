@@ -164,6 +164,12 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const theme = useTheme();
   const styles = useStyles(theme);
 
+  useEffect(() => {
+    if (user) {
+      console.log('Dashboard User:', user);
+    }
+  }, [user]);
+
   const fetchDashboardData = async (showRefreshing = false) => {
     if (showRefreshing) {
       setRefreshing(true);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Image } from 'react-native';
 import { Button, TextInput, Text, useTheme } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,6 +8,17 @@ const LoginScreen = () => {
   const [password, setPassword] = useState('');
   const { login, isLoading, error } = useAuth();
   const theme = useTheme();
+
+  useEffect(() => {
+    if (error) {
+      console.log('Login Error:', error);
+    }
+  }, [error]);
+
+  const handleLogin = () => {
+    console.log('Attempting to log in with email:', email);
+    login(email, password);
+  };
 
   return (
     <View style={styles.container}>
@@ -33,7 +44,7 @@ const LoginScreen = () => {
       />
       <Button
         mode="contained"
-        onPress={() => login(email, password)}
+        onPress={handleLogin}
         style={styles.button}
         loading={isLoading}
         disabled={isLoading}

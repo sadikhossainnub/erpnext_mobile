@@ -86,11 +86,21 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
         
         <Divider />
         
-        <List.Item
-          title="Roles"
-          description={user?.roles?.join(', ') || 'No roles'}
-          left={(props) => <List.Icon {...props} icon="shield-account" />}
-        />
+        <List.Subheader>Roles</List.Subheader>
+        {user?.roles && user.roles.length > 0 ? (
+          user.roles.map((role, index) => (
+            <List.Item
+              key={index}
+              title={role}
+              left={(props) => <List.Icon {...props} icon="shield-check-outline" />}
+            />
+          ))
+        ) : (
+          <List.Item
+            title="No roles assigned"
+            left={(props) => <List.Icon {...props} icon="shield-off-outline" />}
+          />
+        )}
       </View>
 
       <View style={styles.section}>

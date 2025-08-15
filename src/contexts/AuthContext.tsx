@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthState, User } from '../types';
 import { ERPNEXT_SERVER_URL } from '../config';
-import { login as apiLogin } from '../api/auth';
+import { login as apiLogin, get_user_roles } from '../api/auth';
 
 export const AuthContext = createContext<AuthState>({
   user: null,
@@ -30,6 +30,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
     loadUser();
   }, []);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      if (user && user.roles.length === 0) {
+        const rolesResponse = await get_user_roles();
+        if (rolesResponse.data) {
+          const updatedUser = { ...user, roles: rolesResponse.data };
+          setUser(updatedUser);
+          await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        } else {
+          setError(rolesResponse.error || 'Failed to fetch user roles');
+        }
+      }
+    };
+    fetchRoles();
+  }, [user]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
