@@ -561,17 +561,20 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const renderFormContent = () => {
     const fieldsToHide = [
+      'amended_from',
+      'order_type',
       'company',
       'currency',
       'exchange_rate',
-      'price_list', // Assuming 'price_list' or 'selling_price_list'
-      'selling_price_list', // Common fieldname for Price List
+      'price_list',
+      'selling_price_list',
       'price_list_currency_exchange_rate',
       'ignore_pricing_rule',
       'bundle_items',
       'letter_head',
       'group_same_items',
       'print_heading',
+      'disable_rounded_total', 'section_break_44', 'apply_discount_on', 'base_discount_amount', "coupon_code", "additional_discount_percentage", "discount_amount", "referral_sales_partner", "sec_tax_breakup", "other_charges_calculation", "packed_items", "pricing_rule_details", "pricing_rules", "address_and_contact_tab", "more_info_tab", "subscription_section", "auto_repeat", "print_settings", "select_print_heading", "language", "lost_reasons", "competitors", "additional_info_section", "status", "territory", "campaign", "source", "opportunity", "supplier_quotation", "connections_tab", "item_code", "item_name", "section_break_5", "description", "image_section", "image_view", "q_image", "q_image_view", "quantity_and_rate", "qty", "stock_uom", "uom", "conversion_factor", "stock_qty", "available_quantity_section", "actual_qty", "company_total_stock", "price_list_rate", "base_price_list_rate", "discount_and_margin", "distributed_discount_amount", "rate", "net_rate", "amount", "net_amount", "item_tax_template", "base_rate", "base_net_rate", "base_amount", "base_net_amount", "is_free_item", "is_alternative", "valuation_rate", "gross_profit", "item_weight_details", "weight_per_unit", "total_weight", "weight_uom", "reference", "warehouse", "against_blanket_order", "prevdoc_docname", "item_balance", "projected_qty", "stock_balance", "shopping_cart_section", "additional_notes", "page_break", "charge_type", "account_head", "included_in_print_rate", "accounting_dimensions_section", "cost_center", "account_currency", "tax_amount", "total", "tax_amount_after_discount_amount", "base_tax_amount", "base_total", "parent_item", "target_warehouse", "use_serial_batch_fields", "batch_no", "ordered_qty", "incoming_rate", "picked_qty", "pricing_rule", "rule_applied", "payment_term", "section_break_15", "due_date", "mode_of_payment", "invoice_portion", "discount_type", "discount"
     ];
 
     const visibleFields = orderedFields.filter((field) => {
@@ -579,8 +582,8 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
       if (fieldsToHide.includes(field.fieldname)) {
         return false;
       }
-      // Hide fields that are hidden, read-only, or specific section breaks
-      if (field.hidden || field.read_only || field.fieldtype === 'Section Break' || field.fieldtype === 'Tab Break') {
+      // Hide fields that are hidden
+      if (field.hidden) {
         return false;
       }
       // Hide fields with empty labels or fieldnames (blank fields)

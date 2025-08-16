@@ -1,6 +1,7 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ERPNextResponse } from '../types';
+import config from '../config';
 
 let currentApiKey: string | null = null;
 let currentApiSecret: string | null = null;
@@ -27,7 +28,7 @@ class ApiClient {
 
   constructor() {
     this.client = axios.create({
-      baseURL: this.serverUrl,
+      baseURL: config.baseURL,
       timeout: 30000,
       headers: {
         'Content-Type': 'application/json',
@@ -38,10 +39,6 @@ class ApiClient {
 
     this.client.interceptors.request.use(
       async (config) => {
-        const storedUrl = await AsyncStorage.getItem('server_url');
-        this.serverUrl = storedUrl || ''; // Initialize with an empty string
-        config.baseURL = this.serverUrl;
-
         const storedApiKey = await AsyncStorage.getItem('api_key');
         const storedApiSecret = await AsyncStorage.getItem('api_secret');
 
@@ -64,8 +61,9 @@ class ApiClient {
     this.client.defaults.baseURL = url;
   }
 
-  getServerUrl(): string {
-    return this.serverUrl;
+  async getServerUrl(): Promise<string> {
+    const storedUrl = await AsyncStorage.getItem('server_url');
+    return storedUrl || this.serverUrl;
   }
 
   async setApiKey(key: string): Promise<void> {
@@ -76,6 +74,14 @@ class ApiClient {
   async setApiSecret(secret: string): Promise<void> {
     currentApiSecret = secret;
     await AsyncStorage.setItem('api_secret', secret);
+  }
+
+  async getApiKey(): Promise<string | null> {
+    return AsyncStorage.getItem('api_key');
+  }
+
+  async getApiSecret(): Promise<string | null> {
+    return AsyncStorage.getItem('api_secret');
   }
 
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<ERPNextResponse<T>> {

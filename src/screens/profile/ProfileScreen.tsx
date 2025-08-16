@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Avatar, Button, List, Divider, useTheme } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { getImageUrl } from '../../utils/images';
 import { MainTabParamList } from '../../navigation/MainNavigator';
 
 type Props = {
@@ -10,7 +11,7 @@ type Props = {
 };
 
 export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
-  const { user, logout, serverUrl } = useAuth();
+  const { user, logout } = useAuth();
   const theme = useTheme();
 
   const handleLogout = async () => {
@@ -42,41 +43,18 @@ export const ProfileScreen: React.FC<Props> = ({ navigation }) => {
       .toUpperCase();
   };
 
-  let avatarUrl = 'https://www.gravatar.com/avatar/';
-  if (user?.user_image) {
-    try {
-      avatarUrl = new URL(user.user_image, serverUrl).href;
-    } catch (e) {
-      console.error('Invalid user_image URL:', e);
-    }
-  }
+  const avatarSource = getImageUrl(user?.user_image, user);
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        {user?.user_image ? (
-          <Avatar.Image size={80} source={{ uri: avatarUrl }} style={styles.avatar} />
-        ) : (
-          <Avatar.Text
-            size={80}
-            label={user ? getInitials(user.fullName) : '?'}
-            style={styles.avatar}
-          />
-        )}
+        <Avatar.Image size={80} source={typeof avatarSource === 'string' ? { uri: avatarSource } : avatarSource} style={styles.avatar} />
         <Text style={styles.name}>{user?.fullName || 'User'}</Text>
         <Text style={styles.email}>{user?.email || ''}</Text>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account Information</Text>
-        
-        <List.Item
-          title="Server"
-          description={serverUrl || 'Not connected'}
-          left={(props) => <List.Icon {...props} icon="server" />}
-        />
-        
-        <Divider />
         
         <List.Item
           title="User ID"

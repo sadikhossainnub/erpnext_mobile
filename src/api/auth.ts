@@ -1,20 +1,11 @@
-import { apiClient } from './client';
+import { apiClient, setApiKey, setApiSecret } from './client';
 import { User, ERPNextResponse } from '../types';
+import config from '../config';
 
 interface LoginResponse {
   message: string;
   full_name: string;
 }
-
-interface LoggedInUserResponse {
-  message: string;
-}
-
-interface UserRolesResponse {
-  message: string[];
-}
-
-
 
 export const login = async (email: string, password: string): Promise<ERPNextResponse<User>> => {
   try {
@@ -23,16 +14,34 @@ export const login = async (email: string, password: string): Promise<ERPNextRes
       pwd: password,
     });
 
-    console.log('Login response:', response);
-
     if (response.data && response.data.message === 'Logged In') {
-      const user: User = {
-        id: email,
-        email: email,
-        fullName: response.data.full_name || 'User',
-        roles: [], // Roles will be fetched separately
-      };
-      return { data: user };
+      const { apiKey, apiSecret } = config;
+
+      if (apiKey && apiSecret) {
+        await setApiKey(apiKey);
+        await setApiSecret(apiSecret);
+
+        const userDocResponse = await apiClient.get<any>(`/api/resource/User/${email}`);
+        const userDoc = userDocResponse.data?.data;
+
+        if (userDoc) {
+          const roles = userDoc.roles?.map((r: any) => r.role) || [];
+          const user: User = {
+            id: email,
+            email: email,
+            fullName: userDoc.full_name || 'User',
+            roles,
+            apiKey,
+            apiSecret,
+            user_image: userDoc.user_image || null,
+          };
+          return { data: user };
+        } else {
+          return { error: 'Failed to fetch user document' };
+        }
+      } else {
+        return { error: 'API key or secret not found in the configuration file' };
+      }
     } else {
       return { error: 'Invalid credentials' };
     }
@@ -49,26 +58,3 @@ export const logout = async (): Promise<ERPNextResponse<null>> => {
     return { error: 'An unexpected error occurred during logout' };
   }
 };
-
-export const fetchUserRoles = async () => {
-  try {
-    // Step 1: Get logged-in user
-    const userRes = await apiClient.get<LoggedInUserResponse>('/api/method/frappe.auth.get_logged_user');
-    const userData = userRes.data;
-    const user = userData?.message;
-    if (!user) throw new Error("No logged-in user found");
-
-    // Step 2: Get roles for that user
-    const rolesRes = await apiClient.get<UserRolesResponse>(`/api/method/frappe.core.doctype.user.user.get_roles?uid=${user}`);
-    const rolesData = rolesRes.data;
-    const roles = Array.isArray(rolesData?.message) ? rolesData.message : [];
-
-    console.log("User:", user);
-    console.log("Roles:", roles);
-
-    return { user, roles };
-  } catch (err) {
-    console.error("Error fetching roles:", err);
-    return { user: null, roles: [] };
-  }
-}

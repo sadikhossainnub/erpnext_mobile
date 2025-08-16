@@ -90,13 +90,17 @@ export const createDocument = async (
 
     const response = await apiClient.post<DocResponse>(`/api/resource/${docType}`, docData);
     
-    if (response.data) {
+    if (response.data && response.data.data) {
       return { data: response.data.data };
+    } else if (response.data && response.data.message) {
+      // Assuming the created document is in the message property
+      return { data: JSON.parse(response.data.message) };
     } else {
-      return { error: 'Failed to create document' };
+      return { error: 'Failed to create document: Invalid response structure' };
     }
-  } catch (error) {
-    return { error: 'Error creating document' };
+  } catch (error: any) {
+    console.error('Error creating document:', error.response?.data || error.message);
+    return { error: `Error creating document: ${error.response?.data?.message || error.message}` };
   }
 };
 
@@ -126,13 +130,16 @@ export const updateDocument = async (
 
     const response = await apiClient.put<DocResponse>(`/api/resource/${docType}/${docName}`, docData);
     
-    if (response.data) {
+    if (response.data && response.data.data) {
       return { data: response.data.data };
+    } else if (response.data && response.data.message) {
+      return { data: JSON.parse(response.data.message) };
     } else {
-      return { error: 'Failed to update document' };
+      return { error: 'Failed to update document: Invalid response structure' };
     }
-  } catch (error) {
-    return { error: 'Error updating document' };
+  } catch (error: any) {
+    console.error('Error updating document:', error.response?.data || error.message);
+    return { error: `Error updating document: ${error.response?.data?.message || error.message}` };
   }
 };
 

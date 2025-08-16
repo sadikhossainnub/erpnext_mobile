@@ -6,36 +6,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useAuth } from '../../contexts/AuthContext';
-import ConfigPopup from '../../components/ConfigPopup';
-import { setBaseUrl, apiClient, setApiKey, setApiSecret } from '../../api/client';
 import { RootStackParamList } from '../../types';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [popupVisible, setPopupVisible] = useState(false);
-  const [serverUrl, setServerUrl] = useState('https://paperware.jfmart.site');
-  const [apiKey, setApiKeyLocal] = useState('');
-  const [apiSecret, setApiSecretLocal] = useState('');
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
   const { login, isLoading, error } = useAuth();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
 
   useEffect(() => {
-    const loadConfig = async () => {
-      const storedUrl = await apiClient.getServerUrl();
-      setServerUrl(storedUrl);
-      const storedApiKey = await AsyncStorage.getItem('api_key');
-      const storedApiSecret = await AsyncStorage.getItem('api_secret');
-      if (storedApiKey) {
-        setApiKeyLocal(storedApiKey);
-      }
-      if (storedApiSecret) {
-        setApiSecretLocal(storedApiSecret);
-      }
-    };
-    loadConfig();
-
     if (error) {
       console.log('Login Error:', error);
     }
@@ -72,15 +52,6 @@ const LoginScreen = () => {
     } catch (error) {
       console.error('Error during biometric authentication:', error);
     }
-  };
-
-  const handleSave = (url: string, newApiKey: string, newApiSecret: string) => {
-    setBaseUrl(url);
-    setServerUrl(url);
-    setApiKey(newApiKey);
-    setApiSecret(newApiSecret);
-    setApiKeyLocal(newApiKey);
-    setApiSecretLocal(newApiSecret);
   };
 
   const styles = StyleSheet.create({
@@ -145,25 +116,6 @@ const LoginScreen = () => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
-        <ConfigPopup
-          visible={popupVisible}
-          onDismiss={() => setPopupVisible(false)}
-          onSave={handleSave}
-          initialServerUrl={serverUrl}
-          initialApiKey={apiKey}
-          initialApiSecret={apiSecret}
-        />
-        <View style={styles.configButtonContainer}>
-          <Button
-            mode="outlined"
-            onPress={() => setPopupVisible(true)}
-            icon="cog"
-            labelStyle={{ fontSize: 12 }}
-            contentStyle={{ paddingHorizontal: theme.spacing.small }}
-          >
-            Config
-          </Button>
-        </View>
         <Image source={require('../../../assets/logo.jpg')} style={styles.logo} />
         <Text style={styles.title}>PRIME ERP</Text>
         {error && <Text style={styles.error}>{error}</Text>}

@@ -154,6 +154,8 @@ export interface User {
   fullName: string;
   email: string;
   roles: string[];
+  apiKey?: string;
+  apiSecret?: string;
   gender?: string;
   mobile?: string;
   passport_nid?: string;
@@ -168,7 +170,6 @@ export interface AuthState {
   user: User | null;
   isLoading: boolean;
   error: string | null;
-  serverUrl: string;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }

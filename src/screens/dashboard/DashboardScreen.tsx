@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   StyleSheet,
@@ -19,9 +20,9 @@ import {
   Avatar,
 } from 'react-native-paper';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import ConfigPopup from '../../components/ConfigPopup';
 import { BarChart } from 'react-native-chart-kit';
 import { getDashboardData } from '../../api/dashboard';
+import config from '../../config';
 import { DashboardWidget } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
@@ -36,19 +37,15 @@ const screenWidth = Dimensions.get('window').width;
 const Header = ({
   user,
   theme,
-  serverUrl,
-  onConfigPress,
 }: {
   user: any;
   theme: MD3Theme;
-  serverUrl: string;
-  onConfigPress: () => void;
 }) => {
   const styles = useStyles(theme);
   let avatarUrl = 'https://www.gravatar.com/avatar/';
   if (user?.user_image) {
     try {
-      avatarUrl = new URL(user.user_image, serverUrl).href;
+      avatarUrl = new URL(user.user_image, config.baseURL).href;
     } catch (e) {
       console.error('Invalid user_image URL:', e);
     }
@@ -61,9 +58,6 @@ const Header = ({
         <Text style={styles.userName}>{user?.fullName || 'User'}</Text>
       </View>
       <View style={styles.headerRight}>
-        <TouchableOpacity onPress={onConfigPress} style={styles.configButton}>
-          <Ionicons name="settings-outline" size={24} color={theme.colors.onSurface} />
-        </TouchableOpacity>
         <Avatar.Image size={50} source={{ uri: avatarUrl }} />
       </View>
     </View>
@@ -175,12 +169,11 @@ const Widget = ({ item, theme }: { item: DashboardWidget; theme: MD3Theme }) => 
 };
 
 export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
-  const { user, serverUrl } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [isConfigPopupVisible, setIsConfigPopupVisible] = useState(false);
   const theme = useTheme();
   const styles = useStyles(theme);
 
@@ -189,14 +182,6 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
       console.log('Dashboard User:', user);
     }
   }, [user]);
-
-  const handleConfigPress = () => {
-    setIsConfigPopupVisible(true);
-  };
-
-  const handleCloseConfigPopup = () => {
-    setIsConfigPopupVisible(false);
-  };
 
   const fetchDashboardData = async (showRefreshing = false) => {
     if (showRefreshing) {
@@ -262,8 +247,6 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
             <Header
               user={user}
               theme={theme}
-              serverUrl={serverUrl}
-              onConfigPress={handleConfigPress}
             />
             {error && (
               <View style={styles.errorContainer}>
@@ -285,18 +268,6 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
         contentContainerStyle={styles.contentContainer}
-      />
-      <ConfigPopup
-        visible={isConfigPopupVisible}
-        onDismiss={handleCloseConfigPopup}
-        onSave={(serverUrl, apiKey, apiSecret) => {
-          // Handle saving configuration, e.g., update context or local storage
-          console.log('Config saved:', { serverUrl, apiKey, apiSecret });
-          handleCloseConfigPopup();
-        }}
-        initialServerUrl={serverUrl || ''} // Use actual serverUrl from context
-        initialApiKey={''} // Placeholder, replace with actual API key if available
-        initialApiSecret={''} // Placeholder, replace with actual API secret if available
       />
     </SafeAreaView>
   );
