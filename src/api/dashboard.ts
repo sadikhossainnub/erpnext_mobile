@@ -31,15 +31,19 @@ const getDocTypeCount = async (docType: string): Promise<number> => {
   }
 };
 
-const getMonthlySalesCount = async (): Promise<number> => {
+const getMonthlySalesCount = async (userId?: string): Promise<number> => {
   try {
     const date = new Date();
     const month = date.getMonth() + 1;
     const year = date.getFullYear();
+    let filters = `[["docstatus", "=", 1], ["MONTH(transaction_date)", "=", ${month}], ["YEAR(transaction_date)", "=", ${year}]]`;
+    if (userId) {
+      filters = `[["docstatus", "=", 1], ["MONTH(transaction_date)", "=", ${month}], ["YEAR(transaction_date)", "=", ${year}], ["owner", "=", "${userId}"]]`;
+    }
     const response = await apiClient.get<any>('/api/resource/Sales Order', {
       params: {
         fields: '["count(*) as total"]',
-        filters: `[["docstatus", "=", 1], ["MONTH(transaction_date)", "=", ${month}], ["YEAR(transaction_date)", "=", ${year}]]`,
+        filters,
       },
     });
     return response.data?.data[0]?.total || 0;
@@ -121,14 +125,14 @@ const getItemWiseSales = async (): Promise<{ labels: string[]; values: number[] 
   }
 };
 
-export const getDashboardData = async (): Promise<ERPNextResponse<DashboardData>> => {
+export const getDashboardData = async (user?: any): Promise<ERPNextResponse<DashboardData>> => {
   try {
-    const [salesOrders, purchaseOrders, invoices, items, monthlySalesCount, monthlyQuotationCount, monthlySalesData, expenseClaims, leaveApplications, itemWiseSales] = await Promise.all([
+    const [salesOrders, invoices, items, monthlySalesCount, myMonthlySalesCount, monthlyQuotationCount, monthlySalesData, expenseClaims, leaveApplications, itemWiseSales] = await Promise.all([
       getDocTypeCount('Sales Order'),
-      getDocTypeCount('Purchase Order'),
       getDocTypeCount('Sales Invoice'),
       getDocTypeCount('Item'),
       getMonthlySalesCount(),
+      getMonthlySalesCount(user?.fullName),
       getMonthlyQuotationCount(),
       getMonthlySalesData(),
       apiClient.get<any>('/api/resource/Expense Claim', {
@@ -151,7 +155,7 @@ export const getDashboardData = async (): Promise<ERPNextResponse<DashboardData>
     const dashboardData: DashboardData = {
       widgets: [
         { title: 'Sales Orders', type: 'number', data: salesOrders },
-        { title: 'Purchase Orders', type: 'number', data: purchaseOrders },
+        { title: 'My Monthly Sales', type: 'number', data: myMonthlySalesCount },
         { title: 'Invoices', type: 'number', data: invoices },
         { title: 'Inventory Items', type: 'number', data: items },
         { title: 'Monthly Sales Orders', type: 'number', data: monthlySalesCount },

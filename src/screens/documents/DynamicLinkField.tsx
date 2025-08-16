@@ -12,7 +12,9 @@ interface DynamicLinkFieldProps {
 
 const DynamicLinkField: React.FC<DynamicLinkFieldProps> = ({ label, value, onValueChange, options }) => {
   const { watch } = useFormContext();
-  const docType = watch(options);
+  const rawDocType = watch(options);
+  // Capitalize the first letter of the docType to match ERPNext naming conventions
+  const docType = rawDocType ? rawDocType.charAt(0).toUpperCase() + rawDocType.slice(1) : '';
 
   return (
     <View>
@@ -20,7 +22,8 @@ const DynamicLinkField: React.FC<DynamicLinkFieldProps> = ({ label, value, onVal
         label={label}
         value={value}
         onValueChange={onValueChange}
-        docType={docType}
+        options={docType} // Pass the capitalized docType to LinkField's options prop
+        docType={''} // Pass an empty string for the parent docType, as it's not relevant here
       />
     </View>
   );

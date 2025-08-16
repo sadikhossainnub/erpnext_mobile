@@ -5,6 +5,9 @@ import {
   RefreshControl,
   Dimensions,
   FlatList,
+  TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
 } from 'react-native';
 import {
   Text,
@@ -15,6 +18,8 @@ import {
   MD3Theme,
   Avatar,
 } from 'react-native-paper';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import ConfigPopup from '../../components/ConfigPopup';
 import { BarChart } from 'react-native-chart-kit';
 import { getDashboardData } from '../../api/dashboard';
 import { DashboardWidget } from '../../types';
@@ -32,10 +37,12 @@ const Header = ({
   user,
   theme,
   serverUrl,
+  onConfigPress,
 }: {
   user: any;
   theme: MD3Theme;
   serverUrl: string;
+  onConfigPress: () => void;
 }) => {
   const styles = useStyles(theme);
   let avatarUrl = 'https://www.gravatar.com/avatar/';
@@ -53,7 +60,12 @@ const Header = ({
         <Text style={styles.welcomeText}>Welcome,</Text>
         <Text style={styles.userName}>{user?.fullName || 'User'}</Text>
       </View>
-      <Avatar.Image size={50} source={{ uri: avatarUrl }} />
+      <View style={styles.headerRight}>
+        <TouchableOpacity onPress={onConfigPress} style={styles.configButton}>
+          <Ionicons name="settings-outline" size={24} color={theme.colors.onSurface} />
+        </TouchableOpacity>
+        <Avatar.Image size={50} source={{ uri: avatarUrl }} />
+      </View>
     </View>
   );
 };
@@ -61,7 +73,7 @@ const Header = ({
 const NumberWidget = ({ item, theme }: { item: DashboardWidget; theme: MD3Theme }) => {
   const styles = useStyles(theme);
   return (
-    <Card style={styles.numberCard}>
+    <Card style={styles.numberCard} elevation={2}>
       <Card.Content>
         <Text style={styles.cardTitle}>{item.title}</Text>
         <Text style={styles.numberValue}>{item.data}</Text>
@@ -111,32 +123,39 @@ const ChartWidget = ({ item, theme }: { item: DashboardWidget; theme: MD3Theme }
     };
   }
 
+  const chartConfig = {
+    backgroundGradientFrom: theme.colors.surface,
+    backgroundGradientFromOpacity: 0,
+    backgroundGradientTo: theme.colors.surface,
+    backgroundGradientToOpacity: 0,
+    color: (opacity = 1) => theme.colors.primary,
+    labelColor: (opacity = 1) => theme.colors.onSurface,
+    strokeWidth: 2,
+    barPercentage: 0.8,
+    useShadowColorFromDataset: false,
+    decimalPlaces: 0,
+    propsForLabels: {
+      fontSize: 10,
+    },
+  };
+
   return (
     <Card style={styles.chartCard}>
       <Card.Title title={item.title} />
       <BarChart
         data={chartData}
-        width={screenWidth - 64}
-        height={220}
+        width={screenWidth - 48}
+        height={250}
         yAxisLabel="৳"
         yAxisSuffix=""
-        chartConfig={{
-          backgroundColor: theme.colors.surface,
-          backgroundGradientFrom: theme.colors.surface,
-          backgroundGradientTo: theme.colors.surface,
-          decimalPlaces: 2,
-          color: (opacity = 1) => theme.colors.primary,
-          labelColor: (opacity = 1) => theme.colors.onSurface,
-          style: {
-            borderRadius: 16,
-          },
-          propsForDots: {
-            r: '6',
-            strokeWidth: '2',
-            stroke: theme.colors.primary,
-          },
-        }}
+        chartConfig={chartConfig}
         verticalLabelRotation={30}
+        style={{
+          borderRadius: 16,
+        }}
+        withInnerLines={false}
+        fromZero
+        showBarTops={false}
       />
     </Card>
   );
@@ -161,6 +180,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [widgets, setWidgets] = useState<DashboardWidget[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isConfigPopupVisible, setIsConfigPopupVisible] = useState(false);
   const theme = useTheme();
   const styles = useStyles(theme);
 
@@ -169,6 +189,14 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
       console.log('Dashboard User:', user);
     }
   }, [user]);
+
+  const handleConfigPress = () => {
+    setIsConfigPopupVisible(true);
+  };
+
+  const handleCloseConfigPopup = () => {
+    setIsConfigPopupVisible(false);
+  };
 
   const fetchDashboardData = async (showRefreshing = false) => {
     if (showRefreshing) {
@@ -180,7 +208,7 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
     setError(null);
 
     try {
-      const result = await getDashboardData();
+      const result = await getDashboardData(user);
       if (result.data) {
         const filteredWidgets = result.data.widgets.filter(
           (widget: DashboardWidget) =>
@@ -223,42 +251,69 @@ export const DashboardScreen: React.FC<Props> = ({ navigation }) => {
   const otherWidgets = widgets.filter((w) => w.type !== 'number');
 
   return (
-    <FlatList
-      style={styles.container}
-      data={otherWidgets}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.title}
-      ListHeaderComponent={
-        <>
-          <Header user={user} theme={theme} serverUrl={serverUrl} />
-          {error && (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-          <View style={styles.numberWidgetsRow}>
-            {numberWidgets.map((widget) => (
-              <NumberWidget key={widget.title} item={widget} theme={theme} />
-            ))}
-          </View>
-        </>
-      }
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
-      }
-      contentContainerStyle={styles.contentContainer}
-    />
+    <SafeAreaView style={styles.safeArea}>
+      <FlatList
+        style={styles.container}
+        data={otherWidgets}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.title}
+        ListHeaderComponent={
+          <>
+            <Header
+              user={user}
+              theme={theme}
+              serverUrl={serverUrl}
+              onConfigPress={handleConfigPress}
+            />
+            {error && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.numberWidgetsScrollView}
+            >
+              {numberWidgets.map((widget) => (
+                <NumberWidget key={widget.title} item={widget} theme={theme} />
+              ))}
+            </ScrollView>
+          </>
+        }
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+        contentContainerStyle={styles.contentContainer}
+      />
+      <ConfigPopup
+        visible={isConfigPopupVisible}
+        onDismiss={handleCloseConfigPopup}
+        onSave={(serverUrl, apiKey, apiSecret) => {
+          // Handle saving configuration, e.g., update context or local storage
+          console.log('Config saved:', { serverUrl, apiKey, apiSecret });
+          handleCloseConfigPopup();
+        }}
+        initialServerUrl={serverUrl || ''} // Use actual serverUrl from context
+        initialApiKey={''} // Placeholder, replace with actual API key if available
+        initialApiSecret={''} // Placeholder, replace with actual API secret if available
+      />
+    </SafeAreaView>
   );
 };
 
 const useStyles = (theme: MD3Theme) =>
   StyleSheet.create({
-    container: {
+    safeArea: {
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    container: {
+      flex: 1,
+    },
     contentContainer: {
-      padding: 16,
+      paddingHorizontal: 16,
+      paddingBottom: 16,
     },
     loadingContainer: {
       flex: 1,
@@ -277,7 +332,15 @@ const useStyles = (theme: MD3Theme) =>
       alignItems: 'center',
       marginBottom: 24,
       paddingHorizontal: 16,
-      marginTop: 30,
+      paddingTop: 20, // Adjust for SafeAreaView
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10, // Space between settings icon and avatar
+    },
+    configButton: {
+      // No specific styles needed here, gap handles spacing
     },
     welcomeText: {
       fontSize: 28,
@@ -292,33 +355,34 @@ const useStyles = (theme: MD3Theme) =>
       padding: 16,
       backgroundColor: theme.colors.errorContainer,
       borderRadius: theme.roundness,
+      marginHorizontal: 16,
       marginBottom: 16,
     },
     errorText: {
       color: theme.colors.onError,
     },
-    numberWidgetsRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      marginHorizontal: -8,
+    numberWidgetsScrollView: {
+      paddingHorizontal: 8, // Padding for the horizontal scroll view
       marginBottom: 8,
     },
     numberCard: {
-      margin: 8,
-      flex: 1,
-      minWidth: 150,
+      marginHorizontal: 8,
+      width: screenWidth * 0.4, // Make cards take up about 40% of screen width
       borderRadius: theme.roundness,
       backgroundColor: theme.colors.surfaceVariant,
+      paddingVertical: 10, // Add some vertical padding
     },
     cardTitle: {
       fontSize: 14,
       color: theme.colors.onSurfaceVariant,
+      textAlign: 'center', // Center align title
     },
     numberValue: {
       fontSize: 36,
       fontWeight: 'bold',
       marginTop: 8,
       color: theme.colors.primary,
+      textAlign: 'center', // Center align value
     },
     listCard: {
       marginHorizontal: 0,
@@ -331,6 +395,10 @@ const useStyles = (theme: MD3Theme) =>
       marginTop: 8,
       marginBottom: 8,
       backgroundColor: theme.colors.surface,
+      borderRadius: theme.roundness * 2,
+      paddingVertical: 16,
+      paddingHorizontal: 8,
+      alignItems: 'center',
     },
   });
 

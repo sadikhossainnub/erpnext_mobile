@@ -28,6 +28,11 @@ export const getAvailableModules = (): ERPNextResponse<Module[]> => {
       icon: 'user',
       docTypes: ['Lead', 'Opportunity', 'Customer', 'Contact', 'Address'],
     },
+    {
+      name: 'Accounting',
+      icon: 'dollar-sign',
+      docTypes: ['Payment Entry'],
+    },
   ];
 
   return { data: modules };

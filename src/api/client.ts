@@ -1,7 +1,9 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ERPNextResponse } from '../types';
-import { API_KEY, API_SECRET, ERPNEXT_SERVER_URL } from '../config';
+
+let currentApiKey: string | null = null;
+let currentApiSecret: string | null = null;
 
 const handleApiError = (error: AxiosError): ERPNextResponse<any> => {
   if (error.response) {
@@ -21,7 +23,7 @@ const handleApiError = (error: AxiosError): ERPNextResponse<any> => {
 
 class ApiClient {
   private client: AxiosInstance;
-  private serverUrl: string = ERPNEXT_SERVER_URL;
+  private serverUrl: string = ''; // Initialize with an empty string
 
   constructor() {
     this.client = axios.create({
@@ -36,14 +38,18 @@ class ApiClient {
 
     this.client.interceptors.request.use(
       async (config) => {
-        if (config.baseURL !== this.serverUrl) {
-          const storedUrl = await AsyncStorage.getItem('server_url');
-          this.serverUrl = storedUrl || ERPNEXT_SERVER_URL;
-          config.baseURL = this.serverUrl;
-        }
+        const storedUrl = await AsyncStorage.getItem('server_url');
+        this.serverUrl = storedUrl || ''; // Initialize with an empty string
+        config.baseURL = this.serverUrl;
 
-        if (API_KEY && API_SECRET) {
-          config.headers.Authorization = `token ${API_KEY}:${API_SECRET}`;
+        const storedApiKey = await AsyncStorage.getItem('api_key');
+        const storedApiSecret = await AsyncStorage.getItem('api_secret');
+
+        currentApiKey = storedApiKey;
+        currentApiSecret = storedApiSecret;
+
+        if (currentApiKey && currentApiSecret) {
+          config.headers.Authorization = `token ${currentApiKey}:${currentApiSecret}`;
         }
 
         return config;
@@ -60,6 +66,16 @@ class ApiClient {
 
   getServerUrl(): string {
     return this.serverUrl;
+  }
+
+  async setApiKey(key: string): Promise<void> {
+    currentApiKey = key;
+    await AsyncStorage.setItem('api_key', key);
+  }
+
+  async setApiSecret(secret: string): Promise<void> {
+    currentApiSecret = secret;
+    await AsyncStorage.setItem('api_secret', secret);
   }
 
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<ERPNextResponse<T>> {
@@ -100,4 +116,17 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient();
+
+export const setBaseUrl = async (url: string) => {
+  await apiClient.setServerUrl(url);
+};
+
+export const setApiKey = async (key: string) => {
+  await apiClient.setApiKey(key);
+};
+
+export const setApiSecret = async (secret: string) => {
+  await apiClient.setApiSecret(secret);
+};
+
 export default apiClient;

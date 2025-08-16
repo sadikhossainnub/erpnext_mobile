@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, useWindowDimensions } from 'react-native';
 import { Text, TextInput, Button, ActivityIndicator, useTheme, Card, Subheading, Checkbox } from 'react-native-paper';
 import { useForm, FormProvider } from 'react-hook-form';
-import { TabView, TabBar } from 'react-native-tab-view';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { MainStackParamList } from '../../navigation/MainNavigator';
-import { getDocument, updateDocument, createDocument, getDocTypeMetadata, createSalesOrderFromQuotation } from '../../api/documents';
+import { getDocument, updateDocument, createDocument, getDocTypeMetadata, createSalesOrderFromQuotation, getCompanyCurrency } from '../../api/documents';
 import { ERPDocument, ERPField } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import LinkField from './LinkField';
@@ -40,57 +39,11 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const [saving, setSaving] = useState(false);
   const [isCreatingSalesOrder, setIsCreatingSalesOrder] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [companyCurrency, setCompanyCurrency] = useState<string | null>(null); // New state for company currency
   const theme = useTheme();
   const layout = useWindowDimensions();
   const { user } = useAuth();
 
-  const [index, setIndex] = useState(0);
-  const [routes, setRoutes] = useState<{ key: string; title: string }[]>([]);
-
-  const styles = StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    contentContainer: {
-      padding: 16,
-    },
-    subheading: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      marginBottom: 16,
-    },
-    card: {
-      borderRadius: 8,
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    loadingText: {
-      marginTop: 12,
-      fontSize: 16,
-    },
-    errorContainer: {
-      padding: 16,
-      backgroundColor: '#ffebee',
-      borderRadius: 8,
-      marginBottom: 16,
-    },
-    errorText: {
-      color: '#c62828',
-    },
-    fieldContainer: {
-      marginBottom: 16,
-    },
-    input: {
-      backgroundColor: '#FFFFFF',
-    },
-    saveButton: {
-      flex: 1,
-    },
-  });
 
   const fetchMetadata = async () => {
     if (!docType) {
@@ -166,12 +119,6 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
           setFields(allFields);
           setFieldOrder(metaResult.data.field_order);
 
-          const tabFields = (metaResult.data.fields || []).filter((f: ERPField) => f.fieldtype === 'Tab Break');
-          if (tabFields.length > 0) {
-            const firstTab = { key: 'details_tab', title: 'Details' };
-            const otherTabs = tabFields.map((f: ERPField) => ({ key: f.fieldname, title: f.label }));
-            setRoutes([firstTab, ...otherTabs]);
-          }
         } else {
           setError((prev) => (prev ? `${prev}, ${metaResult.error || ''}` : metaResult.error || null));
         }
@@ -191,10 +138,42 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
 
   useEffect(() => {
     fetchDocument();
-    if (mode === 'create' && docType === 'Quotation') {
-      setValue('quotation_to', 'Customer');
+    if (mode === 'create') {
+      if (docType === 'Quotation') {
+        setValue('quotation_to', 'Customer');
+      }
+      // Set default company if user has one and field exists
+      if (user?.company) {
+        setValue('company', user.company);
+      }
     }
-  }, [docType, docName, mode]);
+  }, [docType, docName, mode, user?.company]);
+
+  // Fetch company currency when user or company changes
+  useEffect(() => {
+    const fetchCurrency = async () => {
+      if (user?.company && mode === 'create') {
+        const result = await getCompanyCurrency(user.company);
+        if (result.data) {
+          setCompanyCurrency(result.data);
+        } else {
+          console.error('Failed to fetch company currency:', result.error);
+        }
+      }
+    };
+    fetchCurrency();
+  }, [user?.company, mode]);
+
+  // Set default currency for currency fields when companyCurrency is available
+  useEffect(() => {
+    if (companyCurrency && mode === 'create' && fields.length > 0) {
+      fields.forEach(field => {
+        if (field.fieldtype.toLowerCase() === 'currency' && !formData[field.fieldname]) {
+          setValue(field.fieldname, companyCurrency);
+        }
+      });
+    }
+  }, [companyCurrency, mode, fields, formData, setValue]);
 
   const handleRefresh = () => {
     fetchDocument(true);
@@ -251,6 +230,60 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
     }
   };
 
+  const styles = StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    contentContainer: {
+      padding: 16,
+    },
+    subheading: {
+      fontSize: 20,
+      fontWeight: 'bold',
+      marginBottom: 16,
+    },
+    card: {
+      borderRadius: 8,
+      marginBottom: 16,
+    },
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    loadingText: {
+      marginTop: 12,
+      fontSize: 16,
+    },
+    errorContainer: {
+      padding: 16,
+      backgroundColor: theme.colors.errorContainer,
+      borderRadius: 8,
+      margin: 16,
+    },
+    errorText: {
+      color: theme.colors.error,
+    },
+    fieldContainer: {
+      marginBottom: 16,
+    },
+    input: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.roundness, // Apply border radius
+      paddingVertical: 4, // Add vertical padding
+    },
+    saveButton: {
+      flex: 1,
+    },
+    actionsContainer: {
+      padding: 8,
+      borderTopWidth: 1,
+      borderColor: theme.colors.backdrop,
+      backgroundColor: theme.colors.surface,
+    },
+  });
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -272,7 +305,6 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
   if (!effectiveFieldOrder || effectiveFieldOrder.length === 0) {
     if (fields && fields.length > 0) {
       effectiveFieldOrder = fields.map(f => f.fieldname);
-      console.warn('fieldOrder is missing, using fields.map(f => f.fieldname) as fallback.');
     } else {
       effectiveFieldOrder = [];
     }
@@ -281,15 +313,9 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
     .map(fieldname => (fields || []).find(f => f.fieldname === fieldname))
     .filter(Boolean) as ERPField[];
 
-  // Debug logs
-  console.log('fields:', fields);
-  console.log('fieldOrder:', fieldOrder);
-  console.log('orderedFields:', orderedFields);
-
   const renderField = (field: ERPField) => {
     const fieldType = field.fieldtype.toLowerCase();
 
-    // Helper to get label with optional asterisk
     const getLabel = (label: string, isRequired?: number) => {
       return isRequired ? `${label} *` : label;
     };
@@ -316,16 +342,13 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
           let linkOptions = field.options;
           let linkFilters: Record<string, any> | undefined = undefined;
 
-          // Special handling for 'party' field when 'quotation_to' is 'Customer'
           if (field.fieldname === 'party' && formData.quotation_to === 'Customer') {
-            linkOptions = 'Customer'; // Set the linked DocType to Customer
-            // No specific filters needed here, as the docType itself filters to Customers
+            linkOptions = 'Customer';
           } else if (field.fieldname === 'party' && formData.quotation_to === 'Lead') {
             linkOptions = 'Lead';
           } else if (field.fieldname === 'party' && formData.quotation_to === 'Supplier') {
             linkOptions = 'Supplier';
           }
-          // Add more conditions here if other fields need dynamic filtering
 
           return (
             <View key={field.fieldname} style={styles.fieldContainer}>
@@ -333,9 +356,9 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
                 label={getLabel(field.label, field.reqd)}
                 value={formData[field.fieldname] ? String(formData[field.fieldname]) : ''}
                 onValueChange={(text) => handleInputChange(field.fieldname, text)}
-                options={linkOptions} // Use dynamic linkOptions
-                docType={docType} // Pass the parent docType
-                filters={linkFilters} // Pass dynamic filters
+                options={linkOptions}
+                docType={docType}
+                filters={linkFilters}
               />
             </View>
           );
@@ -383,20 +406,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
       case 'table':
       case 'child table':
         if (field.options) {
-          // Debug log for all fields and current table field
-          console.log('All fields:', fields);
-          console.log('Rendering TableField for:', field.fieldname, 'with options:', field.options);
-          const childFields = fields.filter((f: ERPField) => {
-            const match = f.parent === field.options;
-            if (match) {
-              console.log('Matched child field:', f.fieldname, 'parent:', f.parent);
-            }
-            return match;
-          });
-          if (childFields.length === 0) {
-            console.warn('No child fields found for table:', field.fieldname, 'with options:', field.options);
-          }
-          // Always pass an array for value
+          const childFields = fields.filter((f: ERPField) => f.parent === field.options);
           const tableValue = Array.isArray(formData[field.fieldname]) ? formData[field.fieldname] : [];
           return (
             <View key={field.fieldname} style={styles.fieldContainer}>
@@ -446,6 +456,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
               numberOfLines={4}
               placeholder=" "
               editable={!field.read_only}
+              mode="outlined" // Add mode="outlined"
             />
           </View>
         );
@@ -464,6 +475,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
               keyboardType="numeric"
               placeholder=" "
               editable={!field.read_only}
+              mode="outlined" // Add mode="outlined"
             />
           </View>
         );
@@ -486,6 +498,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
               editable={false}
               style={styles.input}
               placeholder=" "
+              mode="outlined" // Add mode="outlined"
             />
           </View>
         );
@@ -539,100 +552,42 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
               style={styles.input}
               placeholder=" "
               editable={!field.read_only}
+              mode="outlined" // Add mode="outlined"
             />
           </View>
         );
     }
   };
 
-  const renderScene = ({ route }: { route: { key: string } }) => {
-    let fieldsInTab: ERPField[] = [];
-    const firstTabBreakIndex = orderedFields.findIndex(f => f.fieldtype === 'Tab Break');
-
-    if (route.key === 'details_tab') {
-      // Fields for the first tab are all fields until the first Tab Break
-      fieldsInTab = firstTabBreakIndex === -1 ? [...orderedFields] : orderedFields.slice(0, firstTabBreakIndex);
-    } else {
-      // Logic for subsequent tabs
-      const currentTabBreakIndex = orderedFields.findIndex(f => f.fieldname === route.key);
-      
-      // Find the next tab break after the current one
-      let nextTabBreakIndex = -1;
-      for (let i = currentTabBreakIndex + 1; i < orderedFields.length; i++) {
-        if (orderedFields[i].fieldtype === 'Tab Break') {
-          nextTabBreakIndex = i;
-          break;
-        }
-      }
-
-      const start = currentTabBreakIndex + 1;
-      const end = nextTabBreakIndex === -1 ? undefined : nextTabBreakIndex;
-      fieldsInTab = orderedFields.slice(start, end);
-    }
-
-    return (
-      <FlatList
-        style={styles.contentContainer}
-        data={fieldsInTab.filter((field) => {
-          if (field.hidden || field.read_only || field.fieldtype === 'Section Break') {
-            return false;
-          }
-          if (field.depends_on) {
-            try {
-              const condition = field.depends_on.startsWith('eval:')
-                ? field.depends_on.substring(5)
-                : `doc.${field.depends_on}`;
-              const safeFormData = new Proxy(formData, {
-                get: (target, prop) => {
-                  if (typeof prop === 'string') {
-                    return prop in target ? target[prop] : undefined;
-                  }
-                  return undefined;
-                },
-              });
-              const result = new Function('doc', `return ${condition}`)(safeFormData);
-              return !!result;
-            } catch (e) {
-              console.error(`Error evaluating depends_on for ${field.fieldname}:`, e);
-              return false;
-            }
-          }
-          return true;
-        })}
-        renderItem={({ item }) => renderField(item)}
-        keyExtractor={(item) => `${item.parent}-${item.fieldname}`}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-      />
-    );
-  };
-
   const renderFormContent = () => {
-    if (routes.length > 0) {
-      return (
-        <TabView
-          navigationState={{ index, routes }}
-          renderScene={renderScene}
-          onIndexChange={setIndex}
-          initialLayout={{ width: layout.width }}
-          renderTabBar={props => (
-            <TabBar
-              {...props}
-              scrollEnabled
-              style={{ backgroundColor: 'white' }}
-              indicatorStyle={{ backgroundColor: 'black' }}
-              tabStyle={{ width: 'auto' }}
-              // @ts-ignore
-              labelStyle={{ color: 'black' }}
-            />
-          )}
-        />
-      );
-    }
+    const fieldsToHide = [
+      'company',
+      'currency',
+      'exchange_rate',
+      'price_list', // Assuming 'price_list' or 'selling_price_list'
+      'selling_price_list', // Common fieldname for Price List
+      'price_list_currency_exchange_rate',
+      'ignore_pricing_rule',
+      'bundle_items',
+      'letter_head',
+      'group_same_items',
+      'print_heading',
+    ];
 
     const visibleFields = orderedFields.filter((field) => {
-      if (field.hidden || field.read_only || field.fieldtype === 'Section Break') {
+      // Hide fields that are explicitly requested to be hidden
+      if (fieldsToHide.includes(field.fieldname)) {
         return false;
       }
+      // Hide fields that are hidden, read-only, or specific section breaks
+      if (field.hidden || field.read_only || field.fieldtype === 'Section Break' || field.fieldtype === 'Tab Break') {
+        return false;
+      }
+      // Hide fields with empty labels or fieldnames (blank fields)
+      if (!field.label || field.label.trim() === '' || !field.fieldname || field.fieldname.trim() === '') {
+        return false;
+      }
+
       if (field.depends_on) {
         try {
           const condition = field.depends_on.startsWith('eval:')
@@ -668,7 +623,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
       <FlatList
         style={styles.contentContainer}
         data={visibleFields}
-        renderItem={({ item, index }) => renderField(item)}
+        renderItem={({ item }) => <Card style={[styles.card, { backgroundColor: theme.colors.surface }]}><Card.Content>{renderField(item)}</Card.Content></Card>}
         keyExtractor={(item, index) => `${item.parent || ''}-${item.fieldname}-${index}`}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
       />
@@ -679,7 +634,7 @@ const DocumentFormScreen: React.FC<Props> = ({ navigation, route }) => {
     <FormProvider {...methods}>
       <View style={styles.container}>
         {renderFormContent()}
-        <Card.Actions>
+        <Card.Actions style={styles.actionsContainer}>
           <Button
             mode="contained"
             onPress={handleSubmit(handleSave)}

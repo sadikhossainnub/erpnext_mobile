@@ -54,7 +54,7 @@ export const ModulesScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>ERPNext Modules</Text>
+        <Text style={styles.headerTitle}>Modules</Text>
         <Text style={styles.headerSubtitle}>
           Access your business modules and documents
         </Text>
@@ -75,6 +75,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingTop: 40, // Added top margin as requested
   },
   header: {
     padding: 16,

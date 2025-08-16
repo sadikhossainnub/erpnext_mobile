@@ -11,6 +11,7 @@ import DocTypeListScreen from '../screens/documents/DocTypeListScreen';
 import DocumentDetailScreen from '../screens/documents/DocumentDetailScreen';
 import DocumentFormScreen from '../screens/documents/DocumentFormScreen';
 import EmployeeAdvance from '../screens/documents/EmployeeAdvance';
+import AccountingScreen from '../screens/modules/AccountingScreen';
 
 // Define the parameter types for the stack navigator
 export type MainStackParamList = {
@@ -19,6 +20,7 @@ export type MainStackParamList = {
   DocumentDetail: { docType: string; docName: string; title: string };
   DocumentForm: { docType: string; docName?: string; mode: 'create' | 'edit'; title: string };
   EmployeeAdvance: { docType: string; docName?: string; mode: 'create' | 'edit'; title: string };
+  Accounting: undefined;
 };
 
 // Define the parameter types for the tab navigator
@@ -109,6 +111,13 @@ export const MainNavigator: React.FC = () => {
           title: route.params.title,
           headerBackTitleVisible: false,
         })}
+      />
+      <Stack.Screen
+        name="Accounting"
+        component={AccountingScreen}
+        options={{
+          title: 'Accounting',
+        }}
       />
     </Stack.Navigator>
   );

@@ -209,6 +209,22 @@ export const getUserProfile = async (
   }
 };
 
+export const getCompanyCurrency = async (
+  companyName: string
+): Promise<ERPNextResponse<string>> => {
+  try {
+    const response = await getDocument('Company', companyName);
+    if (response.data && response.data.default_currency) {
+      return { data: response.data.default_currency };
+    } else {
+      return { error: 'Failed to fetch company currency or currency not found.' };
+    }
+  } catch (error) {
+    console.error('Error fetching company currency:', error);
+    return { error: 'Error fetching company currency' };
+  }
+};
+
 export const createSalesOrderFromQuotation = async (
   quotationName: string
 ): Promise<ERPNextResponse<ERPDocument>> => {

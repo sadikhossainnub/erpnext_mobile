@@ -1,3 +1,21 @@
+import { MD3Theme } from 'react-native-paper';
+
+declare global {
+  namespace ReactNativePaper {
+    interface ThemeColors {
+      accent: string;
+    }
+
+    interface Theme {
+      spacing: {
+        small: number;
+        medium: number;
+        large: number;
+      };
+    }
+  }
+}
+
 // ERPNext API Response Types
 export interface ERPNextResponse<T> {
   data?: T;
@@ -142,6 +160,8 @@ export interface User {
   date_of_joining?: string;
   user_image?: string | null;
   company?: string;
+  loginTime?: number;
+  serverUrl?: string; // Add serverUrl to User interface
 }
 
 export interface AuthState {
@@ -212,3 +232,10 @@ export interface Module {
   icon: string;
   docTypes: string[];
 }
+
+// Navigation Types
+export type RootStackParamList = {
+  Main: undefined;
+  Login: undefined;
+  ForgotPassword: undefined;
+};

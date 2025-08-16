@@ -84,6 +84,7 @@ const SearchableLinkFieldModal: React.FC<SearchableLinkFieldModalProps> = ({
   useEffect(() => {
     if (visible) {
       setSearchQuery(''); // Reset search query when modal opens
+      setDocuments([]); // Clear previous documents
       fetchDocuments(''); // Fetch all documents initially
     }
   }, [visible, docType, filters]); // Add filters to dependency array

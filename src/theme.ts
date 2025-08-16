@@ -4,13 +4,19 @@ export const theme = {
   ...DefaultTheme,
   colors: {
     ...DefaultTheme.colors,
-    primary: '#007BFF', // Frappe Blue
-    secondary: '#6C757D', // Frappe Gray
-    background: '#F8F9FA', // Frappe Light Gray
-    surface: '#FFFFFF',
-    text: '#212529', // Frappe Black
-    placeholder: '#6C757D', // Frappe Gray
-    error: '#DC3545', // Frappe Red
+    primary: '#6200EE', // A modern, deep purple
+    secondary: '#03DAC6', // A vibrant teal for accents
+    background: '#F5F7FA', // A light, clean background
+    surface: '#FFFFFF', // White for card backgrounds
+    text: '#333333', // Darker text for better readability
+    placeholder: '#9E9E9E', // Lighter gray for placeholders
+    error: '#B00020', // A standard, clear error red
+    accent: '#03DAC6', // Alias for secondary, often used for floating action buttons
   },
-  roundness: 4,
+  roundness: 8, // Increased roundness for a softer, modern look
+  spacing: {
+    small: 8,
+    medium: 16,
+    large: 24,
+  },
 };

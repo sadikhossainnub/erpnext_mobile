@@ -6,27 +6,15 @@ interface LoginResponse {
   full_name: string;
 }
 
+interface LoggedInUserResponse {
+  message: string;
+}
+
 interface UserRolesResponse {
   message: string[];
 }
 
-export const get_user_roles = async (): Promise<ERPNextResponse<string[]>> => {
-  try {
-    const response = await apiClient.get<UserRolesResponse>('/api/method/frappe.client.get_user_roles');
-    if (response.data && Array.isArray(response.data.message)) {
-      return { data: response.data.message };
-    } else if (response.data && Array.isArray(response.data)) {
-      // Handle cases where the response data is the array of roles
-      return { data: response.data as unknown as string[] };
-    } else {
-      console.error('Unexpected response format for user roles:', response.data);
-      return { error: 'Failed to fetch user roles due to unexpected format' };
-    }
-  } catch (error) {
-    console.error('Error fetching user roles:', error);
-    return { error: 'An unexpected error occurred while fetching user roles' };
-  }
-};
+
 
 export const login = async (email: string, password: string): Promise<ERPNextResponse<User>> => {
   try {
@@ -52,3 +40,35 @@ export const login = async (email: string, password: string): Promise<ERPNextRes
     return { error: 'An unexpected error occurred' };
   }
 };
+
+export const logout = async (): Promise<ERPNextResponse<null>> => {
+  try {
+    await apiClient.get('/api/method/logout');
+    return { data: null };
+  } catch (error) {
+    return { error: 'An unexpected error occurred during logout' };
+  }
+};
+
+export const fetchUserRoles = async () => {
+  try {
+    // Step 1: Get logged-in user
+    const userRes = await apiClient.get<LoggedInUserResponse>('/api/method/frappe.auth.get_logged_user');
+    const userData = userRes.data;
+    const user = userData?.message;
+    if (!user) throw new Error("No logged-in user found");
+
+    // Step 2: Get roles for that user
+    const rolesRes = await apiClient.get<UserRolesResponse>(`/api/method/frappe.core.doctype.user.user.get_roles?uid=${user}`);
+    const rolesData = rolesRes.data;
+    const roles = Array.isArray(rolesData?.message) ? rolesData.message : [];
+
+    console.log("User:", user);
+    console.log("Roles:", roles);
+
+    return { user, roles };
+  } catch (err) {
+    console.error("Error fetching roles:", err);
+    return { user: null, roles: [] };
+  }
+}
